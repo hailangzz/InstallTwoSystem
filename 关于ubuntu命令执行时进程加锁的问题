@@ -1,0 +1,31 @@
+在Ubuntu下解决E: 无法对目录 /var/lib/apt/lists/ 加锁的问题
+
+ 错误提示：
+E: 无法获得锁 /var/lib/apt/lists/lock – open (11: 资源暂时不可用)
+E: 无法对目录 /var/lib/apt/lists/ 加锁
+
+这个问题在Ubuntu系统下非常常见，在添加源，然后在更新源时中途中断了更新，只要再安装软件或者再去更新的时候就会出来的错误提示。
+
+
+解决办法一：
+面对这个问题，有人直接在终端中输入命令：
+sudo rm /var/cache/apt/archives/lock
+sudo rm /var/lib/dpkg/lock
+
+即可解决。
+
+
+解决办法二：
+
+在更新进程还在内存中，要先终止这个进程，所以，先得找出进程，在终端中输入：ps -aux
+
+比方输入如下：
+USER PID %CPU %MEM VSZ RSS TTY STAT START TIME COMMAND
+root 3545 0.0 0.1 5948 1196 ? S 13:09 0:00 sudo apt-get up
+root 3546 0.0 0.2 8408 2484 ? S 13:09 0:00 apt-get update
+
+这个进程的3545与3546就是进程的ID，终止它们两个要在终端中输入：
+sudo kill 3545
+sudo kill3546
+
+然后把你查来的PID代替3545与3546就行了。
