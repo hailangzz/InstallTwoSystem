@@ -1,3 +1,27 @@
  参考：https://blog.csdn.net/qq_28057541/article/details/51723914
 
 首先 window键（窗口键） + R ，然后输入 Diskpart 打开命令行
+
+
+之后很多教程的代码命令都是
+
+list disk 显示磁盘列表
+select disk 选择进入efi所在磁盘
+clean 清空磁盘
+这窝就受不了了，因为我显示就一个磁盘，清空了我玩毛？况且就300mb的分区，非得清空整个磁盘？？？
+
+输入 list disk 只有一个磁盘的小伙伴们可以放心继续
+此时命令行会显示出你的电脑的磁盘数，比如我的只有一个磁盘0：
+那我们就进入磁盘0 输入命令 selec disk 0，你可以理解为 现在我们所在的位置就是 磁盘0
+
+然后继续深入，列出这个磁盘有哪些 分区 ，输入命令 list partition（截图的时候我的efi分区已经成功的删掉了，所以没有显示在截图中）
+
+继续深入到 我们要打扫的房间，输入 select partition X 其中x对应你的efi分区
+
+现在我们终于进入了“我们要打扫房间”
+
+输入 delete partition override ，意为 删除所在的分区，其中override是强制的意思，如果不加override不会删除成功的
+
+万事大吉！
+
+
