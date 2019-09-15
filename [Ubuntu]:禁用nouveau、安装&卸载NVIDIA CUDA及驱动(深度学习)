@@ -1,0 +1,87 @@
+这里只针对Ubuntu的安装卸载，安装驱动方式的不同，卸载也有些许不同。通常有3种方式：
+
+    通过apt包管理工具来安装， 这样的方式好处是卸载安装的管理跟其他软件一致
+
+    通过.deb包来安装，这里就跳过apt，直接使用了dpkg。卸载同样要用dpkg卸载
+
+    通过runfile安装，卸载也需要这个runfile，所以安装完驱动最好保留之前的安装包，以备卸载的需要
+
+实体机器没有装cuDNN的环境，我们倾向于使用nvidia-docker+ 预装cuDNN的docker image来完成深度学习的训练工作，关于实体机安装的教程后续补上(没有需求所以还没装过)
+卸载老版本NVIDIA驱动
+apt
+
+sudo apt purge nvidia* #注意会删掉所有nvidia相关的软件
+
+deb
+
+    sudo dpkg -l #列出所有安装软件,找到类似nvidia-384这样的驱动程序
+    sudo dpkg -l | grep nvidia #只列出含有nvidia字样的软件
+    sudo dpkg -r cuda-drivers
+    sudo dpkg -r libcuda1-384
+    sudo dpkg -r nvidia-384-dev
+    sudo dpkg -r nvidia-opencl-icd-384
+    sudo dpkg -r nvidia-384 #确保顺利卸载，出现错误要及时纠正
+
+如果删不掉，报错信息里可以看到相关依赖的包，一个个删除依赖的包
+
+正确删除驱动如下图
+
+QQ20180728-160050.png
+
+然后删除相关软件比如 nvidia-setting nvidia-modprobe
+
+    sudo dpkg -r nvidia-setting
+    sudo dpkg -r nvidia-modprobe
+
+runfile
+
+    NVIDIA-Linux-x86-384.run --uninstall #卸载即可
+    #或者
+    nvidia-uninstall
+
+ 
+安装新驱动(含CUDA Toolkit)
+
+这里推荐用runfile安装，其它的后续再补上。去往https://developer.nvidia.com/cuda-downloads  选择对应的Linux版本(这里只针对Ubuntu),选择runfile(local)
+
+QQ20180727-123139.png
+
+下载完成后，先确保禁用了nouveau，我这里没有被禁用
+
+QQ20180728-161715.png
+
+sudo vim /etc/modprobe.d/blacklist.conf
+
+在blacklist.conf末尾添加:
+
+blacklist nouveau
+
+更新,然后重启
+
+    sudo update-initramfs -u
+    sudo reboot
+
+在Ubuntu上(ssh，如果是Desktop环境请ctrl+alt+F1切换到Terminal环境)，先禁用x server，如果是不同的x server,替换lightdm为对应server即可
+
+sudo service lightdm stop
+
+然后运行run
+
+./cuda_9.2.88_396.26_linux.run
+
+出现EULA，按f翻页，最后填入accept,后面就根据需要安装(Driver、CUDA Toolkit、不安装OpenGL),具体如下图
+
+QQ20180727-124208.png
+
+安装成功则会出现下图
+
+QQ20180727-124910.png
+
+输入
+
+nvidia-smi
+
+如果能正常看到显卡信息，驱动版本也是对的就OK啦
+————————————————
+版权声明：本文为CSDN博主「ALDNOAH_ZERO」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/ALDNOAH_ZERO/article/details/81235863
