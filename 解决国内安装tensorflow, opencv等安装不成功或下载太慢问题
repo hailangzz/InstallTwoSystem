@@ -1,0 +1,111 @@
+解决国内安装tensorflow, opencv等安装不成功或下载太慢问题
+2018年09月27日 23:28:47 xd_wjc 阅读数 2966更多
+分类专栏： Ubuntu下的各种安装
+1. 安装tensorflow官方方法与使用国内源方法
+1.1 官方安装方法-适用翻墙
+tensorflow安装方法比较常见，参考谷歌的官方教程，安装方法如下：
+
+python2版本的安装
+pip install --upgrade tensorflow      # for Python 2.*
+pip install --upgrade tensorflow-gpu  # for Python 2.* and GPU
+1
+2
+python3版本的安装
+pip3 install --upgrade tensorflow     # for Python 3.*
+pip3 install --upgrade tensorflow-gpu # for Python 3.* and GPU
+1
+2
+1.2 国内源方法-无需翻墙
+但是国内网络问题，网速非常慢，如果没有翻墙，可以按照下面方法快速安装
+
+python2版本的快速安装
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple/ --upgrade tensorflow      # for Python 2.*
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple/ --upgrade tensorflow-gpu  # for Python 2.* and GPU
+1
+2
+python3版本的快速安装
+pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple/ --upgrade tensorflow     # for Python 3.*
+pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple/ --upgrade tensorflow-gpu # for Python 3.* and GPU
+1
+2
+以上是使用清华的镜像源地址，也可使用下面的镜像地址替换清华源地址：
+
+阿里云 
+http://mirrors.aliyun.com/pypi/simple/
+ 
+中国科技大学 
+https://pypi.mirrors.ustc.edu.cn/simple/
+ 
+豆瓣(douban) 
+http://pypi.douban.com/simple/
+ 
+清华大学 
+https://pypi.tuna.tsinghua.edu.cn/simple/
+ 
+中国科学技术大学 
+http://pypi.mirrors.ustc.edu.cn/simple/
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+2. opencv的pip/pip3安装方法
+图像处理领域必不可少的当属opencv，但是使用opencv源码编译的方法比较麻烦，现在非官方的pip安装非常方便，下面给出针对python2和python3的环境，分别给出安装方法，并且针对国内下载速度过慢的问题，参照tensorflow的快速安装方法也可实现opencv的快速安装
+
+2.1 opencv的pip/pip3普通安装-适用翻墙
+需要说明的是opencv官方也曾给出pip的安装方法，但是也明确这种方法并非官方安装方法，仅供参考。不过，现在opencv的高阶函数API使用较少，一般是使用读图或视频，以及简单的预处理方法，所以pip安装基本足够我使用，并且pip安装方法也给出了额外的包安装方法，命令行安装方法如下：
+
+# python2版本的基本包安装
+pip install opencv-python
+# python2版本的额外包安装
+pip install opencv-contrib-python
+# python3版本的基本包安装
+pip3 install opencv-python
+# python3版本的额外包安装
+pip3 install opencv-contrib-python
+1
+2
+3
+4
+5
+6
+7
+8
+2.2 opencv的pip/pip3快速安装-国内源
+与tensorflow安装一样，如果没有翻墙的话，安装过程非常漫长，而且中间安装还有很大可能中断，因此可以套用tensorflow的国内源安装方法来安装opencv
+
+# python2版本的基本包安装
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple opencv-python
+# python2版本的额外包安装
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple opencv-contrib-python
+# python3版本的基本包安装
+pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple opencv-python
+# python3版本的额外包安装
+pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple opencv-contrib-python
+1
+2
+3
+4
+5
+6
+7
+8
+9
+上面使用的是清华源，如果速度不行，可以参考1.2节的说明，使用其他国内镜像源地址。
+3. 总结
+其实只要使用pip/pip3安装的方法，都可以加上国内源地址进行安装，当然我没有测试过所有的安装包，大部分都可以的。如果你能翻墙，就跳过我这篇文章吧。
+一般的pip/pip3安装可以参考如下格式
+
+# for python2.x
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple XXXXXXX 
+# for python3.x
