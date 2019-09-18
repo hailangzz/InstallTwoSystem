@@ -1,0 +1,60 @@
+ NVIDIA驱动问题解决方案：Failed to initialize NVML: driver/library version mismatch 原
+天蚕宝衣
+ 天蚕宝衣 发布于 2018/01/12 14:10
+字数 308
+阅读 9840
+收藏 0
+点赞 0
+评论 0
+
+撸了今年阿里、头条和美团的面试，我有一个重要发现.......>>>
+
+在容天服务器SCS4850上输入命令：
+
+sudo dpkg --list | grep nvidia-*
+
+显示如下：
+
+可以看见英伟达驱动版本是384.111。
+
+再输入命令：
+
+cat /proc/driver/nvidia/version
+
+显示的NVRM version: NVIDIA UNIX x86_64 Kernel Module仍然是旧的版本：384.98。
+
+在容天服务器SCS4450的情况和容天服务器SCS4850相同。
+
+然后看容天服务器SCS4850的日志，输入命令：
+
+cat /proc/driver/nvidia/version
+
+显示如下：
+
+然后看容天服务器SCS4450的日志，输入命令：
+
+cat /proc/driver/nvidia/version
+
+显示如下：
+
+发现两个服务器的驱动都自动更新了，为384.111，而英伟达的内核模块还是旧的版本384.98，所以导致输入命令：
+
+nvidia-smi
+
+后显示不匹配。
+
+重启计算机。
+
+进入cd /etc/apt/apt.conf.d/50unattended-upgrades
+
+在服务器容天SCS4850中禁止自动更新：
+
+在服务器容天SCS4450中禁止自动更新：
+
+然后再次输入该命令，服务器容天SCS4850的显示结果如下：
+
+服务器容天SCS4450的显示结果如下：
+
+然后使用这个命令：
+
+ps -eo pid,user,group,euser,egroup,cmd
