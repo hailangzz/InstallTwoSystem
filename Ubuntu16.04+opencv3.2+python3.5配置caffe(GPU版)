@@ -1,0 +1,305 @@
+1.安装Ubuntu16.04
+这里省略了安装过程,只记录了配置静态ip
+（1）编辑/etc/network/interfaces文件
+
+sudo gedit /etc/network/interfaces
+
+# interfaces(5) file used by ifup(8) and ifdown(8)
+#auto lo
+#iface lo inet loopback
+auto eno1  #这里需要用ifconfig命令查看一下自己的网卡名称
+iface eno1 inet static
+address x.x.x.x #ip地址
+netmask x.x.x.x #子网掩码
+gateway x.x.x.x #网关
+dns-nameserver x.x.x.x ###dns
+（2）重启网卡
+
+sudo /etc/init.d/networking restart
+2.安装Nvidia
+（1）禁用nouveau
+
+sudo gedit /etc/modprobe.d/blacklist.conf
+在最后一行添加
+
+backlist vga16fb
+blacklist nouveau
+blacklist rivafb
+blacklist rivatv
+blacklist nvidiafb
+（2）更新内核
+
+sudo update-initramfs -u
+（3）关机重启
+
+lsmod | grep nouveau
+没有输出则关闭成功
+（4）关闭图像界面
+
+sudo service lightdm stop
+（5）按Ctrl+Alt+F1进入命令行界面
+（6）给run文件赋予执行权限
+
+sudo chmod a+x NVIDIA-Linux-x86_64-xxx.xx.run
+（7）安装
+
+sudo ./NVIDIA-Linux-x86_64-xxx.xx.run –no-opengl-files
+（8）退出命令行界面
+
+sudo service lightdm start
+（9）重启，验证是否安装成功
+
+nvidia-smi
+3.安装Cuda8.0
+（1）下载CUDA
+（2）执行如下命令(执行过程中会让你选择是否那种nvidia驱动，需要选否)
+
+sudo chmod 777 cuda_8.0.61_375.26_linux.run
+sudo  ./cuda_8.0.61_375.26_linux.run
+（3）配置环境变量
+
+打开bashrc文件sudo gedit ~/.bashrc将以下内容写入到~/.bashrc尾部
+export PATH=/usr/local/cuda-8.0/bin${PATH:+:${PATH}}
+export LD_LIBRARY_PATH=/usr/local/cuda-8.0/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+在/etc/profile文件中添加CUDA环境变量sudo gedit /etc/profile打开文档都在文档结尾加上下面两句
+PATH=/usr/local/cuda/bin:$PATH  
+export PATH
+使环境变量立即生效
+source /etc/profile
+添加lib库路径，在 /etc/ld.so.conf.d/新建文件 cuda.conf
+sudo gedit /etc/ld.so.conf.d/cuda.conf
+添加如下路径
+/usr/local/cuda/lib64
+执行下列命令使之立刻生
+sudo ldconfig
+测试CUDA的samples
+cd /usr/local/cuda-8.0/samples/1_Utilities/deviceQuery
+make
+sudo ./deviceQuery
+显示为pass则成功
+
+4.安装cudnn6.0
+（1）下载对应的cudnn
+（2）执行如下命令
+
+sudo tar -xzvf cudnn-8.0-linux-x64-v6.0.tgz
+sudo cp cuda/include/cudnn.h /usr/local/cuda/include
+sudo cp cuda/lib64/libcudnn* /usr/local/cuda/lib64
+sudo chmod a+r /usr/local/cuda/include/cudnn.h /usr/local/cuda/lib64/libcudnn*
+5.修改默认python版本
+本文没有采用annconda来进行安装。因此在编译之前需要先将ubuntu默认的python版本修改为python3.5。
+（1）使用 update-alternatives 来为整个系统更改 Python 版本
+
+# update-alternatives --list python
+update-alternatives: error: no alternatives for python
+出现以上所示的错误信息，表示 Python 的替代版本尚未被 update-alternatives 命令识别
+（2）更新替代列表
+
+# update-alternatives --install /usr/bin/python python /usr/bin/python2.7 1
+update-alternatives: using /usr/bin/python2.7 to provide /usr/bin/python (python) in auto mode
+# update-alternatives --install /usr/bin/python python /usr/bin/python3.5 2
+update-alternatives: using /usr/bin/python3.5 to provide /usr/bin/python (python) in auto mode
+（3)再次列出可用的 Python 替代版本
+
+# update-alternatives --list python
+/usr/bin/python2.7
+/usr/bin/python3.5
+（4）使用下方的命令随时在列出的 Python 替代版本中任意切换
+
+# update-alternatives --config python
+（5）移除替代版本
+
+# update-alternatives --remove python /usr/bin/python2.7
+update-alternatives: removing manually selected alternative - switching python to auto mode
+update-alternatives: using /usr/bin/python3.5 to provide /usr/bin/python (python) in auto mode
+因为切换了版本，所以在使用pip时要注意使用pip3还是pip
+
+6.编译安装opencv3.2
+（1）下载opencv
+手动下载：https://opencv.org/releases.html 下载源码后解压
+或 wget https://github.com/Itseez/opencv/archive/3.2.0.zip
+（2）安装依赖（还差什么以后再补）
+
+sudo apt-get install build-essential cmake pkg-config
+sudo apt-get install libjpeg8-dev libtiff5-dev libjasper-dev libpng12-dev
+ 
+sudo apt-get install libavcodec-dev libavformat-dev libswscale-dev libv4l-dev
+sudo apt-get install libxvidcore-dev libx264-dev
+ 
+sudo apt-get install libgtk-3-dev
+ 
+sudo apt-get install libatlas-base-dev gfortran
+ 
+sudo apt-get install python3.5-dev
+sudo apt-get install python3-numpy
+（3）创建编译文件夹
+
+#进入opencv目录
+mkdir build
+cd build
+（4）编译准备（修改成自己的路径，python2版本只需要保留前两行）
+
+cmake -D CMAKE_BUILD_TYPE=RELEASE \
+-D CMAKE_INSTALL_PREFIX=/usr/local \
+-D PYTHON3_EXECUTABLE=/usr/bin/python3 \
+-D PYTHON_INCLUDE_DIR=/usr/include/python3.5 \
+-D PYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.5m.so \
+-D PYTHON3_NUMPY_INCLUDE_DIRS=/usr/lib/python3/dist-packages/numpy/core/include/ ..
+（5）编译安装
+
+sudo make -j16
+sudo make install
+（6）添加环境变量
+
+sudo /bin/bash -c 'echo "/usr/local/lib" > /etc/ld.so.conf.d/opencv.conf'
+添加环境变量
+gedit ~/.bashrc 
+把下面这一句加入文档的最末尾。
+export PYTHONPATH=/usr/local/lib/python3.5/dist-packages:$PYTHONPATH
+然后
+sudo ldconfig
+sudo apt-get update
+（7）验证
+
+python
+>>>import cv2
+>>>cv2.__version__
+显示正确则安装成功
+（8）报错信息：可能会提示ippicv_linux_20151201下载失败，这是由于网络原因，可以自己下载好之后放到相应的文件夹
+下载ippicv_linux_20151201
+将其放入/home/xxx/opencv-3.2.0/3rdparty/ippicv/downloads/linux-808b791a6eac9ed78d32a7666804320e路径下，替换原来的压缩包，然后重新编译
+（9） 如果想用python调用opencv，安装python3-opencv
+
+sudo apt-get install python3-opencv  
+sudo apt-get install python3-numpy
+7.安装caffe
+（1）安装依赖
+
+sudo apt-get install libprotobuf-dev libleveldb-dev libsnappy-dev libopencv-dev
+ 
+sudo apt-get install libhdf5-serial-dev protobuf-compiler
+ 
+sudo apt-get install --no-install-recommends libboost-all-dev
+ 
+sudo apt-get install libopenblas-dev liblapack-dev libatlas-base-dev
+ 
+sudo apt-get install libgflags-dev libgoogle-glog-dev liblmdb-dev
+（2）https://github.com/BVLC/caffe 下载caffe后解压
+（3）复制Makefile.config文件
+
+sudo cp Makefile.config.example Makefile.config
+（4）修改配置文件Makefile.config
+
+sudo gedit Makefile.config
+将第5行注释去掉
+USE_CUDNN := 1
+将第21行注释去掉
+OPENCV_VERSION := 3
+将第37和38行删除（cuda8.0后不再支持）
+# CUDA architecture setting: going with all of them.
+# For CUDA < 6.0, comment the *_50 through *_61 lines for compatibility.
+# For CUDA < 8.0, comment the *_60 and *_61 lines for compatibility.
+# For CUDA >= 9.0, comment the *_20 and *_21 lines for compatibility.
+CUDA_ARCH :=-gencode arch=compute_30,code=sm_30 \
+        -gencode arch=compute_35,code=sm_35 \
+        -gencode arch=compute_50,code=sm_50 \
+        -gencode arch=compute_52,code=sm_52 \
+        -gencode arch=compute_60,code=sm_60 \
+        -gencode arch=compute_61,code=sm_61 \
+        -gencode arch=compute_61,code=compute_61
+修改第51行
+BLAS := open
+修改python路径信息
+# NOTE: this is required only if you will compile the python interface.
+# We need to be able to find Python.h and numpy/arrayobject.h.
+# PYTHON_INCLUDE := /usr/include/python3.5 \
+        /usr/lib/python3/dist-packages/numpy/core/include
+# Anaconda Python distribution is quite popular. Include path:
+# Verify anaconda location, sometimes it's in root.
+# ANACONDA_HOME := $(HOME)/anaconda
+# PYTHON_INCLUDE := $(ANACONDA_HOME)/include \
+        # $(ANACONDA_HOME)/include/python2.7 \
+        # $(ANACONDA_HOME)/lib/python2.7/site-packages/numpy/core/include
+
+# Uncomment to use Python 3 (default is Python 2)
+  PYTHON_LIBRARIES := boost_python3 python3.5m
+  PYTHON_INCLUDE := /usr/include/python3.5m \
+                  /usr/lib/python3/dist-packages/numpy/core/include
+将# Whatever else you find you need goes here. 下面的
+INCLUDE_DIRS := $(PYTHON_INCLUDE) /usr/local/include
+LIBRARY_DIRS := $(PYTHON_LIB) /usr/local/lib /usr/lib
+替换成
+
+INCLUDE_DIRS := $(PYTHON_INCLUDE) /usr/local/include /usr/include/hdf5/serial
+LIBRARY_DIRS := $(PYTHON_LIB) /usr/local/lib /usr/lib /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu/hdf5/serial 
+若要使用python来编写layer，则去掉下面注释
+#WITH_PYTHON_LAYER := 1  >>>>  WITH_PYTHON_LAYER := 1 
+（5）修改Makefile文件
+
+NVCCFLAGS +=-ccbin=$(CXX) -Xcompiler-fPIC $(COMMON_FLAGS)
+替换成
+NVCCFLAGS += -D_FORCE_INLINES -ccbin=$(CXX) -Xcompiler -fPIC $(COMMON_FLAGS)
+LIBRARIES += glog gflags protobuf boost_system boost_filesystem m hdf5_serial
+替换成
+LIBRARIES += glog gflags protobuf boost_system boost_filesystem m hdf5_serial_hl hdf5_serial
+（6）编译
+
+sudo make all –j16
+15524575346758.jpg
+sudo make test –j16
+15524575678295.jpg
+sudo make runtest –j16
+15524576240958.jpg
+(7)编译pycaffe
+
+在caffe根目录的python文件夹下，有一个requirements.txt的清单文件，上面列出了需要的依赖库，按照这个清单安装
+cd ./python
+for req in $(cat requirements.txt); do pip3 install $req; done
+安装完成以后，再次回到caffe根目录执行
+sudo pip3 install -r python/requirements.txt
+编译pycaffe接口
+sudo make pycaffe  -j16
+配置环境变量，以便python调用
+sudo gedit ~/.bashrc
+
+export PYTHONPATH=/home/caffe/python:$PYTHONPATH
+
+source ~/.bashrc
+（8）测试
+
+python
+>>> import caffe
+没有报错则安装成功
+报错信息：
+(1)错误1（import caffe时）
+
+undefined symbol: _ZN5boost6python6detail11init_moduleER11PyModuleDefPFvvE
+/usr/lib/x86_64-linux-gnu/路径下查找boost_python文件的版本是否与python版本匹配,caffe默认的配置文件为python2.7,因此这里需要修改
+将caffe的Makefile的第208行修改为（根据自己的版本修改）
+
+PYTHON_LIBRARIES := boost_python-py35 python3.5m
+然后重新编译
+
+sudo make clean
+sudo ldconfig
+sudo make all
+sudo make test
+sudo make runtest
+（2）错误2（import caffe时）
+
+File "/usr/local/lib/python3.5/dist-packages/dateutil/rrule.py", line 55
+    raise ValueError, "Can't create weekday with n == 0"
+                    ^
+SyntaxError: invalid syntax
+升级matplotlib包
+（3）错误3（import caffe时）
+
+ImportError: No module named 'scipy._lib.decorator'
+卸载scipy后重装，若是在卸载时出现
+
+Cannot uninstall 'ipython'. It is a distutils installed project and thus we cannot accurately det
+可以直接在相应的python路径：lib/site-packages下删除ipython.xxx.egg-info文件
+
+sudo pip3 install scipy
+重新编译再测试。
+个人主页
