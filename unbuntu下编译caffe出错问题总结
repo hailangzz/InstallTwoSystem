@@ -1,0 +1,140 @@
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/u010801994/article/details/82389890
+————————————————
+版权声明：本文为CSDN博主「chang_rj」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/u010801994/article/details/82389890
+
+在编译caffe SSD过程中，由于尝试anaconda进行caffe环境搭建，尝试了过多方法，致使配置混乱，遂重新进行系统配置，并总结了可能会遇到的问题，记录如下。
+
+问题1及解决方案：
+报错：
+.build_release/lib/libcaffe.so:
+undefined reference to `google::protobuf::io::CodedOutputStream::WriteVarint64ToArray(unsigned long long, unsigned char)’*
+（1）goole protoc 问题
+一般是protoc版本问题，系统默认一般是3.1.0，在此降到2.6.1，具体方法，可参考上一篇caffe安装的博客。
+经常protoc不能make到，修改makefile中的protoc位置，具体操作如下：
+
+# 也就是下面$(Q)后跟的地址，/usr/local/bin/protoc（whereis protoc找到自己安装的位置）
+
+$(PROTO_BUILD_DIR)/%.pb.cc $(PROTO_BUILD_DIR)/%.pb.h : \
+		$(PROTO_SRC_DIR)/%.proto | $(PROTO_BUILD_DIR)
+	@ echo PROTOC $<
+	$(Q)/usr/local/bin/protoc --proto_path=$(PROTO_SRC_DIR) --cpp_out=$(PROTO_BUILD_DIR) $<
+
+$(PY_PROTO_BUILD_DIR)/%_pb2.py : $(PROTO_SRC_DIR)/%.proto \
+		$(PY_PROTO_INIT) | $(PY_PROTO_BUILD_DIR)
+	@ echo PROTOC \(python\) $<
+	$(Q)/usr/local/bin/protoc --proto_path=$(PROTO_SRC_DIR) --python_out=$(PY_PROTO_BUILD_DIR) $<
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+（2）降gcc,g++的版本
+    (cuda版本不能超过6.0，故选择降至4.8，这个具体问题具体分析)
+  参考博客 gcc/g++降至4.8
+
+gcc --version # 查看当前版本
+sudo apt-get install gcc-4.8
+ls /usr/bin/gcc* # 查看已有的gcc版本，确认一下刚才4.8.5有没有装成功
+# 某个版本加入gcc候选中，最后的数字是优先级，我自己是直接设为100，没任何问题
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 100
+sudo update-alternatives --config gcc # 显示当前配置的gcc版本
+# g++ 降级安装同理，只需将gcc进行置换即可
+# Note：此时gcc --version，可能还是显示的以前默认版本，但配置已经更改为gcc-4.8了，如果出现这种情况也不必惊慌，为啥出现这种情况，我也很费解。
+1
+2
+3
+4
+5
+6
+7
+8
+降完版本，如果问题仍未解决，可能是protobuf未用现有gcc/g++进行编译，可重新进行编译，编译可见安装protobuf 2.6.1，记得make之前make clean一下，防止出错。
+
+问题2：
+File “/home/crj/caffe/python/caffe/init.py”, line 1, in
+from .pycaffe import Net, SGDSolver, NesterovSolver, AdaGradSolver, RMSPropSolver, AdaDeltaSolver, AdamSolver
+File “/home/crj/caffe/python/caffe/pycaffe.py”, line 13, in
+from ._caffe import Net, SGDSolver, NesterovSolver, AdaGradSolver,
+ImportError: /home/crj/caffe/python/caffe/_caffe.so: undefined symbol: _ZN5caffe9SGDSolverIfE19SnapshotSolverStateERKSs
+
+  解决方法：
+
+# 分析原因：忘记实现make test，重新执行以下步骤可实现import caffe成功
+make clean
+make all -j16
+make pycaffe
+make test
+make runtest
+1
+2
+3
+4
+5
+6
+问题3：
+出错error：
+NVCC src/caffe/test/test_im2col_kernel.cu
+/usr/lib/gcc/x86_64-linux-gnu/6/include/stddef.h(436): error: identifier “nullptr” is undefined
+/usr/lib/gcc/x86_64-linux-gnu/6/include/stddef.h(436): error: expected a “;”
+/usr/include/x86_64-linux-gnu/c++/6/bits/c++config.h(205): error: expected a “;”
+/usr/include/c++/6/exception(63): error: expected a “;”
+/usr/include/c++/6/exception(69): error: expected a “;”
+
+  解决方法：
+
+这个在网上查到的解决方案是gcc的版本问题，但是在caffe进行编译前，已经将gcc降到了gcc-4.8版本，
+本不应有此问题，故重新make clean编译了一遍，成功。
+1
+2
+问题4：
+出错error：
+AR -o .build_release/lib/libcaffe.a
+LD -o .build_release/lib/libcaffe.so.1.0.0-rc3
+/usr/bin/x86_64-linux-gnu-ld: 找不到 -lopenblas
+collect2: error: ld returned 1 exit status
+Makefile:568: recipe for target ‘.build_release/lib/libcaffe.so.1.0.0-rc3’ failed
+make: *** [.build_release/lib/libcaffe.so.1.0.0-rc3] Error 1
+
+  解决方法：
+
+sudo apt-get install liblapack-dev liblapack3 libopenblas-base libopenblas-dev
+1
+问题5：
+出错error：
+CXX/LD -o .build_release/tools/upgrade_net_proto_binary.bin
+.build_release/lib/libcaffe.so：对‘boost::re_detail_106501::verify_options(unsigned int, boost::regex_constants::_match_flags)’未定义的引用
+
+  解决方法：
+
+# 修改下面makefile文件#中的内容
+# LIBRARIES += glog gflags protobuf boost_system boost_filesystem boost_regex m hdf5_hl hdf5
+LIBRARIES += glog gflags protobuf boost_system boost_filesystem boost_regex m hdf5_serial_hl hdf5_serial
+1
+2
+3
+问题6
+这里附一个在装cuda时遇到的问题
+sudo apt-get install cuda
+出错error：
+依赖: cuda-9-0 (>= 9.0.176) 但是它将不会被安装 无法修正错误,因为您要求某些软件包保持现状，它们破坏了软件包间的依赖关系
+
+这个问题，总结了一下，最可能出现的原因是，使用系统附加专有驱动引起的，网上一堆说是软件更新的锅，试了一下，均不好使，故放弃了专有驱动，自己重新进行安装nvidia-390，解决了该问题。参考上篇博客下的安装GPU版本的tensorflow部分。
+
+也总结下nvidia-smi命令后，显示的驱动安装失败的问题。
+（1）按上述步骤进行重新install nvidia-390
+（2）在软件和更新上的附加驱动中，选择专有驱动nvidia-390
+记得sudo reboot进行重启，如果发现安装成功，但是仍无效，你可能是忘记了重启。
+重启过程中，蓝屏界面选择enroll mok ——continue——yes——密码——reboot，注意（等待太久，蓝屏界面自动过渡，同样会不能成功）
+————————————————
+版权声明：本文为CSDN博主「chang_rj」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/u010801994/article/details/82389890
