@@ -1,0 +1,4 @@
+https://blog.csdn.net/qq_29893385/article/details/81183346
+
+将41行改为：
+$bash_dir/../../build/tools/get_image_size $root_dir $dst_file $bash_dir/$dataset"_name_size.txt"
