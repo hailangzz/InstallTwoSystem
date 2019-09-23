@@ -1,1 +1,4 @@
 https://blog.csdn.net/lxytsos/article/details/81032711
+
+
+for req in $(cat requirements.txt); do pip3 install -i https://pypi.tuna.tsinghua.edu.cn/simple/ --upgrade $req; done
