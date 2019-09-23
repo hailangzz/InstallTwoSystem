@@ -1,0 +1,47 @@
+今天安装Caffe框架，make时一切正常，但import caffe时出现以下错误
+
+>>> import caffe
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "/home/jcole/Git/caffe/python/caffe/__init__.py", line 1, in <module>
+    from .pycaffe import Net, SGDSolver, NesterovSolver, AdaGradSolver, RMSPropSolver, AdaDeltaSolver, AdamSolver, NCCL, Timer
+  File "/home/jcole/Git/caffe/python/caffe/pycaffe.py", line 13, in <module>
+    from ._caffe import Net, SGDSolver, NesterovSolver, AdaGradSolver, \
+ImportError: /home/jcole/Git/caffe/python/caffe/_caffe.so: undefined symbol: _ZN5boost6python6detail11init_moduleER11PyModuleDefPFvvE
+1
+2
+3
+4
+5
+6
+7
+8
+Google该错误，发现原因是boost_python的版本不匹配，默认python版本为3.5，而boost_python为2.7。
+解决方法：
+先在系统的/usr/lib/x86_64-linux-gnu/路径下查找boost_python文件的版本是否与python版本匹配，我的电脑中文件名为：
+libboost_python-py35.so.1.58.0
+说明版本为python3.5，匹配。若不匹配则安装对应的boost_python版本。
+接下来打开Caffe文件夹下的Makefile文件，将第208行的
+
+PYTHON_LIBRARIES := boost_python python2.7
+1
+改为
+
+PYTHON_LIBRARIES := boost_python-py35  #py35需要改为你自己的python版本，如py34,py33
+1
+接着重新编译文件：
+
+make clean
+sudo ldconfig
+make caffe
+make all
+make test
+1
+2
+3
+4
+5
+再次import caffe,没有报错。
+————————————————
+版权声明：本文为CSDN博主「VampireWeekend」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/sinat_35406909/article/details/84198140
