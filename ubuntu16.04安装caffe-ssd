@@ -1,0 +1,233 @@
+https://my.oschina.net/u/3269534/blog/1811628
+
+Ubuntu16.04安装caffe-ssd
+1. 准备好caffe环境
+1.1 安装caffe依赖包
+# 安装第三方依赖库
+sudo apt-get update && apt-get install -y --no-install-recommends \
+build-essential \
+cmake \
+vim \
+git \
+wget \
+curl \
+zip \
+liblapack-dev \
+liblapack3 \
+libatlas-base-dev \
+libopenblas-dev \
+libboost-all-dev \
+libgflags-dev \
+libgoogle-glog-dev \
+libhdf5-serial-dev \
+libleveldb-dev \
+liblmdb-dev \
+libprotobuf-dev \
+libsnappy-dev \
+protobuf-compiler \
+python-dev \
+python-numpy \
+python-opencv \
+python-scipy
+# 删除软件安装包
+sudo rm -rf /var/lib/apt/lists/*
+注意：如果出现以下提示“E: 无法获得锁 /var/cache/apt/archives/lock - open (11: 资源暂时> 不可用) E: 无法对目录 /var/cache/apt/archives/ 加锁”，请删除对应目录 后再执行apt-get命令
+
+sudo rm -rf /var/cache/apt/archives/lock
+1.2 安装pip
+# 需要将pip升级到10.0.1版本（使用pip install --upgrade或者pip install -U pip会导致pip无法使用），否则无法安装setuptools，升级到10.0.1版本后会自动成功安装setuptools
+# 卸载pip（没有安装则该以下命令不做任何处理）
+sudo apt-get remove -y python-pip
+# 官方下载pip安装文件(代替sudo apt-get install -y python-pip)
+sudo -i
+curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py 
+sudo python get-pip.py
+sudo rm -rf get-pip.py # 删除pip安装文件
+
+# 如果pip有问题
+sudo apt autoremove -y python-pip
+
+# pip方式安装第三方库
+sudo -H pip install Cython \
+numpy \
+scipy \
+scikit-image \
+matplotlib \
+ipython \
+h5py \
+leveldb \
+networkx \
+nose \
+pandas \
+python-dateutil \
+protobuf \
+python-gflags \
+pyyaml \
+Pillow \
+six --user
+
+# 也可以按照$CAFFE_ROOT/python/requirements.txt中指定具体版本安装
+pip install Cython==0.19.2 \
+numpy==1.7.1 \
+scipy==0.13.2 \
+scikit-image==0.9.3 \
+matplotlib==1.3.1 \
+ipython==3.0.0 \
+h5py==2.2.0 \
+leveldb==0.191 \
+networkx==1.8.1 \
+nose==1.3.0 \
+pandas==0.12.0 \
+python-dateutil==2.6.0 \
+protobuf==2.5.0 \
+python-gflags==2.0 \
+pyyaml==3.10 \
+Pillow==2.3.0 \
+six==1.1.0 --user
+
+1.3 安装OpenCV2.0
+sudo -i #切换到root用户
+# Ubuntu16.04默认安装OpenCV3.0+，需要手动安装OpenCV2.0
+wget -O /opt/opencv2.4.13.6.zip https://github.com/opencv/opencv/archive/2.4.13.6.zip
+unzip opencv2.4.13.6.zip
+cd opencv-2.4.13.6/ && mkdir release/ && cd release
+cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local ..
+make && make install
+注意：FATAL: In-source builds are not allowed. You should create separate directory for build files. ---Configuring incomplete, errors occurred! 则应该是在代码根目录下直接执行过 cmake，导致根目录下生成了 CMakeCache.txt，CMakefile，需要删除 CMakeCache.txt，CMakeFile再次执行编译即可。
+
+2. 设置Vim编辑器
+# 设置使用vim编辑文件时设置行号
+sudo vim /etc/vim/vimrc
+# 再最后一行添加
+set number # 保存退出
+3. 下载ssd源码
+su guxiaotu # 切换回用户guxiaotu
+# 切换到当前用户主目录下
+cd $id
+git clone https://github.com/weiliu89/caffe.git caffe-ssd
+# 进入caffe-ssd源代码目录
+cd caffe-ssd
+# checkout出ssd算法源码
+git checkout ssd
+注意：出现以下提示说明分支切换成功“分支 ssd 设置为跟踪来自 origin 的远程分支 ssd。切换到一个新分支 'ssd'”
+
+4. 设置环境变量
+# 在最后添加,caffe源码默认存放在当前用户hxr的主目录下
+echo 'export CAFFE_ROOT=/home/guxiaotu/caffe-ssd' >> ~/.bashrc	# 配置$CAFFE_ROOT	# 配置$CAFFE_ROOT
+# 将/usr/lib/python2.7/dist-packages和$CAFFE_ROOT/python追加到$PYTHONPATH.
+echo 'export PYTHONPATH=$PYTHONPATH:/usr/lib/python2.7/dist-packages:$CAFFE_ROOT/python'>>~/.bashrc
+# 将$CAFFE_ROOT/build/tool命令工具追加到$PATH中
+echo 'export PATH=$PATH:$CAFFE_ROOT/build/tool' >> ~/.bashrc
+# 使环境变量生效
+source ~/.bashrc
+5. 编译caffe环境
+5.1 配置Makefile.config
+5.1.1 配置CPU模式和使用Python
+cd $CAFFE_ROOT
+# 复制Makefile.confit
+cp Makefile.config.example Makefile.config
+# 编辑Makfile.config
+sudo vim Makefile.config
+# 修改以下内容
+CPU_ONLY := 1	# 第8行，将前面#取消，启用只使用CPU模式
+WITH_PYTHON_LAYER := 1 # 第89行，取消注释表示使用Python编写layer
+注意：配置OpenCV3(需要修改Makefile等文件，所以我直接使用OpenCV2，而不配置OpenCV3)
+
+# 终端下查看OpenCV版本(以下两种方法都可以)
+pkg-config --modversion opencv # 显示为3.1版本
+apt show libopencv-dev
+# 取消注释启用OPENCV_VERNSION
+OPENCV_VERSION := 3 # 第21行，由于ubuntu17.10安装的依赖opencv为3.0版本，所以也启用
+注意：第65~67行表明了makefile文件从哪个文件路径寻找python的numpy库，所以在/etc/profile中环境变量PYTHONPATH需要手动追加/usr/lib/python2.7/dist-packages（Python2.7）,另外还提供了Anaconda方式配置Python，以及Matlab环境的配置
+
+65 # We need to be able to find Python.h and numpy/arrayobject.h.
+66 PYTHON_INCLUDE := /usr/include/python2.7 \
+67                 /usr/lib/python2.7/dist-packages/numpy/core/include
+注意：第75~78行表明默认Python环境为Python2.7
+
+75 # Uncomment to use Python 3 (default is Python 2)
+76 # PYTHON_LIBRARIES := boost_python3 python3.5m
+77 # PYTHON_INCLUDE := /usr/include/python3.5m \
+78 #                 /usr/lib/python3.5/dist-packages/numpy/core/include
+5.1.2配置hdf5环境(第91行~93行)
+91 # Whatever else you find you need goes here.
+92 INCLUDE_DIRS := $(PYTHON_INCLUDE) /usr/local/include
+93 LIBRARY_DIRS := $(PYTHON_LIB) /usr/local/lib /usr/lib
+
+# 后面追加配置hdf5路径
+92 INCLUDE_DIRS := $(PYTHON_INCLUDE) /usr/local/include /usr/include/hdf5/serial
+93 LIBRARY_DIRS := $(PYTHON_LIB) /usr/local/lib /usr/lib/usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu/hdf5/serial
+5.2 编译和测试
+su hxr #切换用户hxr
+# 保证在$CAFFE_ROOT目录中
+cd $CAFFE_ROOT
+make -j8 # 编译，-j8：加速CPU便宜速度，其他参数-j4,-j16
+# 确保$CAFFE_ROOT/python添加到环境变量PYTHONPATH中（详细请看4. 设置环境变量）
+make pycaffe # 编译pycaffe
+make test -j8
+# (可选)
+make runtest -j8
+清除make编译命令 make clean
+
+6. 准备模型以及数据集
+6.1下载作者训练的模型数据，存放在$CAFFE_ROOT/models/VGGNet/
+# 如果使用作者已经训练好的模型数据，请下载到$CAFFE_ROOT/model
+sudo wget -P $CAFFE_ROOT/model http://www.cs.unc.edu/%7Ewliu/projects/SSD/models_VGGNet_VOC0712_SSD_300x300.tar.gz
+# 解压到制定目录
+tar -zxvf $CAFFE_ROOT/model/models_VGGNet_VOC0712_SSD_300x300.tar.gz -C $CAFFE_ROOT/model
+6.2 下载VOC2007 and VOC2012数据集， 存放在默认目录$HOME/data/中
+# 用户主目录下创建data目录后进入
+mkdir $HOME/data
+# 下载数据集
+sudo wget -P $HOME/data http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar
+sudo wget -P $HOME/data http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar
+sudo wget -P $HOME/data http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar
+# 解压到指定目录（必须按照以下顺序解压，不能颠倒）
+tar -xvf $HOME/data/VOCtrainval_11-May-2012.tar -C $HOME/data
+tar -xvf $HOME/data/VOCtrainval_06-Nov-2007.tar -C $HOME/data
+tar -xvf $HOME/data/VOCtest_06-Nov-2007.tar -C $HOME/data
+注意：三个压缩文件解压顺序一定不能打乱
+
+6.3 创建LMDB文件
+cd $CAFFE_ROOT # 必须保证在$CAFFE_ROOT中执行
+# 在data/VOC0712/中创建trainval.txt, test.txt, and test_name_size.txt 
+./data/VOC0712/create_list.sh
+# You can modify the parameters in create_data.sh if needed.
+# It will create lmdb files for trainval and test with encoded original image:
+#   - $HOME/data/VOCdevkit/VOC0712/lmdb/VOC0712_trainval_lmdb
+#   - $HOME/data/VOCdevkit/VOC0712/lmdb/VOC0712_test_lmdb
+# and make soft links at examples/VOC0712/
+./data/VOC0712/create_data.sh
+注意：如果提示缺少某个model，说明缺少对应Python第三方库，使用pip install安装
+
+7. 训练/计算
+7.1 训练模型
+# It will create model definition files and save snapshot models in:
+#   - $CAFFE_ROOT/models/VGGNet/VOC0712/SSD_300x300/
+# and job file, log file, and the python script in:
+#   - $CAFFE_ROOT/jobs/VGGNet/VOC0712/SSD_300x300/
+# and save temporary evaluation results in:
+#   - $HOME/data/VOCdevkit/results/VOC2007/SSD_300x300/
+# It should reach 77.* mAP at 120k iterations.
+python examples/ssd/ssd_pascal.py
+7.2 图片数据集上测试
+# If you would like to test a model you trained, you can do:
+python examples/ssd/score_ssd_pascal.py
+7.3 视频数据测试$CAFFE_ROOT/examples/videos
+cd $CAFFE_ROOT
+# 测试示例视频
+sudo vim $CAFFE_ROOT/examples/ssd/ssd_pascal_video.py 
+# 第99~100行修改模式为CPU，P.Solver.GPU修改为P.Solver.CPU
+99 # Use GPU or CPU
+100 solver_mode = P.Solver.CPU
+# 第77~76行修改视频文件路径$CAFFE_ROOT/examples/videos
+75 # The video file path
+76 video_file = "examples/videos/ILSVRC2015_train_00755001.mp4"
+7.4 摄像头测试
+# 摄像头测试
+sudo vim $CAFFE_ROOT/examples/ssd/ssd_pascal_webcam.py 
+# 第100~101行修改模式为CPU，P.Solver.GPU修改为P.Solver.CPU
+101 # Use GPU or CPU
+102 solver_mode = P.Solver.CPU
+# If you would like to attach a webcam to a model you trained, you can do:
+python examples/ssd/ssd_pascal_webcam.py
