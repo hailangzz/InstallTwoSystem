@@ -1,0 +1,26 @@
+CUDA与cuDNN关系:https://www.jianshu.com/p/622f47f94784
+NVIDIA显卡驱动版本，CUDA版本，cudnn版本之间关系及如何选择:https://blog.csdn.net/iamqianrenzhan/article/details/89343601
+
+显卡驱动装最新的,因为可以向下兼容更多的CUDA版本
+CUDA版本根据所需的Tensorflow或Pytorch的要求进行选择
+在根据CUDA选择对应的cudnn版本
+一行命令卸载:https://blog.csdn.net/qq_33200967/article/details/80689543#CUDA_71
+ubuntu18.04安装CUDA9.0:https://www.jianshu.com/p/288c536a1092
+多版本切换:https://blog.csdn.net/qq_23996885/article/details/90205937
+cudnn按不成功解决方法:在tgz包
+https://blog.csdn.net/CAU_Ayao/article/details/83627342#1_Cuda90_14
+https://blog.csdn.net/Aiolia86/article/details/80342240
+检查cudnn是否安装成功:https://blog.csdn.net/wanzhen4330/article/details/81704474
+
+cudnn安装顺序:
+
+sudo dpkg -i libcudnn7_7.0.5.15-1+cuda9.0_amd64.deb 
+sudo dpkg -i libcudnn7-dev_7.0.5.15-1+cuda9.0_amd64.deb 
+sudo dpkg -i libcudnn7-doc_7.0.5.15-1+cuda9.0_amd64.deb 
+1
+2
+3
+https://blog.csdn.net/m0_37407756/article/details/80769952
+————————————————
+版权声明：本文为CSDN博主「Vincent__Lai」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/weixin_38705903/article/details/94960578
