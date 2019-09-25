@@ -1,0 +1,77 @@
+本文链接：https://blog.csdn.net/weixin_41018348/article/details/82592057
+本人ubuntu系统安了cuda一些乱七八糟的东西后，发现根目录空间不够了（15G，之前安装双系统设置的），痛下决心把根目录给扩容一下（主要是怕系统崩了），下边介绍一下使用gparted分区软件对linux系统进行磁盘分区。（亲测好使！！！扩容后应该能够折腾一段时间了）
+
+在ubuntu16.04下，使用下面命令安装gparted:
+
+sudo apt-get install gparted
+
+安装好后用下边命令启动gparted:
+
+sudo gparted
+
+
+
+在ubuntu16.04安装好后启动的界面如上，可以看到开辟的空间都带有钥匙标记，这时不能对分区进行操作，需要先卸载（unmount）或者停止（swapoff）（附：没试过直接在现已安装的Ubuntu下卸载或停止，而是用制作Ubuntu启动U盘试用模式下进行的），用U盘Ubuntu启动盘进入试用模式。
+
+在试用系统中，搜索gparted，就能启动已安装的gparted
+
+
+
+进入gparted后，可以看到除了linux-swap交互空间的钥匙标记还有，其它的都没了，这时需要将linux-swap停止，鼠标右键选择swapoff后，可以看到所有分区的钥匙标记都没了。
+
+本人的home（sda7）分区闲置的空间比较大，选择在home分区进行压缩出新的空闲空间。在sda7中选择Resize/Move进行压缩
+
+
+
+然后选择要压缩的空间，其中有三个编辑框，分别是：Free Space Preceding, New Size, Free Space following
+
+Free Space Preceding代表从sda7压缩 N MB，在sda7的上方，即sda6与sda7之间
+
+New Size表示当前分区的容量，若要压缩该分区，该值需要减去压缩值
+
+Free Space following代表从sda7压缩 N MB，在sda7的下方
+
+
+
+选择好free space prceding 后，点击一下New size 的数值，会自动计算好压缩完后的空间，然后点击Resize/Move就能看到在sda7上方会压缩出一个新分区unallocated。
+
+下面需要将unallocated，移动到sda1下边或上边才能对其扩容。
+
+移动的方法与压缩一样，选择sda6进行resize/Move，进入界面后直接进行resize/move，就能将unallocated移动到sda6上方，同理对sda5进行操作
+
+
+
+这时unallocated到了sda2下方，发现对sda2不能进行同样的操作。仔细看了一下，原来系统是将整个硬盘分成了sda1和sda2两个分区，然后再将sda2分成了三个分区sda5\sda6sda7
+
+
+
+实际上我们需要的是将sda2压缩出一个新的空闲分区给sda1
+
+这时，对sda2重复sda7的操作，就能将unallocated移动到sda2的上方（即sda1下方）。
+
+选择sda1进行rezise/move，对这个滑条进行操作，拉满即可（实际上就是对sda1扩容）
+
+
+
+完成后就能看到sda1已经扩容至所设容量（下边图是已扩容好的）
+
+ 
+
+
+
+最后，一定要记得应用到整个系统，
+
+即选择菜单栏 >> Edit >> Apply all Operations >> Apply
+
+等待完成即可。（本人操作完成时有两个warning，并没理会，重启系统后一切正常）
+
+PS:由于本人是在系统扩容后才写的博客（主要是怕自己需要用的时候忘了操作流程），上边的图都是在根目录扩容后的，要是看得不明白，还请多多包涵～
+
+参考教程：
+
+https://blog.csdn.net/code_segment/article/details/79237500
+
+https://blog.csdn.net/t765833631/article/details/79031063
+————————————————
+版权声明：本文为CSDN博主「fire_lgh」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/weixin_41018348/article/details/82592057
