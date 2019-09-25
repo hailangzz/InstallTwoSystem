@@ -1,0 +1,98 @@
+一、背景
+ 
+
+Win10系统下安装ubuntu16.04双系统-常见问题解答
+
+ 
+
+由于安装双系统时，ubuntu分区设置如下：
+
+1) 主分区 ext4 / 30720MB
+
+2) 主分区 swap area 8192MB
+
+3) 逻辑分区 ext4 /boot 1024MB
+
+4) 逻辑分区 ext4 /home 剩余的空间
+
+后来在ubuntu16.04下默认路径安装MATLAB R2017b后，每次打开终端，会出现设备空间不足的提示，且不能使用tab键。
+
+在终端输入：cd /ho按tab键时，显示错误：
+bash: cannot create temp file for here-document: No space left on device
+且浏览器也无法打开了。
+
+yuanlibin@yuanlibin:~$ df -h
+/dev/sda8共29G,用了28G，100%！！！（/此根目录相当于windows下的Ｃ盘）
+
+删除了usr/local/Matlab后，
+
+
+
+/dev/sda8 29G 10G 17G 38% / （根目录空间变大了，浏览器也可以打开了）
+
+所以在安装双系统时，分区要给主分区 / 足够的空间，仅仅上面的30G是不够的！
+
+除了重装系统外，本博文使用GParted调整ubuntu根目录空间大小：将/home下的200G分配到/ 下！
+
+二、详细操作步骤
+1.制作GParted的U盘启动盘。镜像文件下载地址：https://sourceforge.net/projects/gparted/files/old-gparted-livecd/
+
+或者百度网盘（至20180621的最新版本）链接：https://pan.baidu.com/s/1h_MzARFxUFAMhsr268g3uA密码：6wuv
+
+在windows下使用ultraISO软件刻录U盘启动盘。
+
+2. 重启系统，按F12从U盘启动。
+
+
+
+继续enter：
+
+
+
+继续enter，选择语言33为英文：
+
+
+
+继续enter：
+
+
+
+选择进入Gpated：
+
+
+
+然后出现：
+
+
+
+右击/dev/sda11(即/home)，选择Resize/Move。在gparted中，每个分区都有三个属性可以调整。
+
+Free Space Preceding(MiB)：分配204800（即200G）；
+
+New Size(MiB)：会自动分配到剩下的空间（剩余的200多G,共500G）；
+
+Free Space Following(MiB)：0（后面不要分配空闲区）。
+
+参考网址：http://worldant.blog.sohu.com/100113405.html
+
+通过4次操作，/home下的200G空间分配到/ 根目录下。
+
+每次操作会有下图提示，直接点OK即可。
+
+
+
+完成后点击工具栏的Apply按钮：
+
+
+
+然后：
+
+
+
+最后分配成功：
+
+
+
+点击桌面图标Exit, reboot之后进入ubuntu16.04。
+
+查看空间分配情况如下：
