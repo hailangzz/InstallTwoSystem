@@ -1,0 +1,58 @@
+1.准备数据
+cd caffe
+sudo ./data/mnist/get_mnist.sh #下载数据集
+sudo ./examples/mnist/create_mnist.sh #转换格式
+1
+2
+3
+
+
+2.训练
+sudo ./examples/mnist/train_lenet.sh
+1
+出现错误：
+
+wangwh@wangwh-Lenovo-YOGA-710-14IKB:~/caffe$ sudo ./examples/mnist/train_lenet.sh
+I1220 10:55:37.676761 20412 caffe.cpp:204] Using GPUs 0
+F1220 10:55:37.676882 20412 common.cpp:66] Cannot use GPU in CPU-only Caffe: check mode.
+*** Check failure stack trace: ***
+    @     0x7fe4c4c685cd  google::LogMessage::Fail()
+    @     0x7fe4c4c6a433  google::LogMessage::SendToLog()
+    @     0x7fe4c4c6815b  google::LogMessage::Flush()
+    @     0x7fe4c4c6ae1e  google::LogMessageFatal::~LogMessageFatal()
+    @     0x7fe4c51a8a60  caffe::Caffe::SetDevice()
+    @           0x40a78b  train()
+    @           0x407208  main
+    @     0x7fe4c344a830  __libc_start_main
+    @           0x407ad9  _start
+    @              (nil)  (unknown)
+Aborted (core dumped)
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+分析：因为我没有配置GPU，所以需要修改这个文件。
+
+尝试解决：
+修改了文件lenet_solver.prototxt:
+# solver mode: CPU or GPU
+solver_mode: CPU 
+1
+2
+发现可以训练了，这不简单的嘛哈哈哈，不知道训练得多长时间啊。坏了，忘记修改一下迭代次数了，这只是练习而已啊，表示一下就行了。。。
+成功了：
+竟然是经过了一万次迭代，有点多了，刚才改成1000次还快一些。
+————————————————
+版权声明：本文为CSDN博主「小膜仙」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/m0_38116269/article/details/85112737
