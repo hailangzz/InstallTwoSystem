@@ -1,3 +1,5 @@
+https://blog.csdn.net/m0_38116269/article/details/85112737
+
 1.准备数据
 cd caffe
 sudo ./data/mnist/get_mnist.sh #下载数据集
