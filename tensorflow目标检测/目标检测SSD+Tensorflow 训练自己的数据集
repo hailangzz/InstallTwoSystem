@@ -1,0 +1,59 @@
+https://blog.csdn.net/qq_32951799/article/details/82384308
+
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/qq_32951799/article/details/82384308
+原文地址:https://blog.csdn.net/weixin_39881922/article/details/80569803
+
+代码解析:https://blog.csdn.net/qq1483661204/article/details/79776065
+
+对原文的几点解释这说明:
+
+1.代码地址：https://github.com/balancap/SSD-Tensorflow，下载该代码到本地
+
+注:该代码是github上tensorflow版的SSD star 最多的代码.
+
+2.解压ssd_300_vgg.ckpt.zip 到checkpoint文件夹下
+
+注:ssd_300_vgg.ckpt.zip在checkpoints文件夹下,直接解压到checkpoints即可.
+
+3.测试一下看看，在notebooks中创建demo_test.py,其实就是复制ssd_notebook.ipynb中的代码，该py文件是完成对于单张图片的测试，对Jupyter不熟，就自己改了，感觉这样要方便一些。
+
+注:创建demo_test.py,将下面的73行代码粘贴到里面即可使用.其中,第69行代码可以设置具体使用哪张图像进行测试.
+
+4.将自己的数据集做成VOC2007格式放在该工程下面
+
+注:直接将VOC2007文件夹粘贴到SSD-Tensorflow文件夹下即可.
+
+5. 修改datasets文件夹中pascalvoc_common.py文件，将训练类修改别成自己的
+
+6.  将图像数据转换为tfrecods格式.
+
+7.运行tf_convert_data.py文件
+
+注:(1)在SSD-Tensorflow-master文件夹下创建tfrecords_文件夹
+
+(2)在SSD-Tensorflow中运行终端terminal,在其上运行tf_convert_data.py文件,命令如下：
+SSD-Tensorflow$ python3 ./tf_convert_data.py  --dataset_name=pascalvoc  --dataset_dir=./VOC2007/   
+
+--output_name=voc_2007_train --output_dir=./tfrecords_  
+
+(3)其中:./VOC2007/ 为VOC数据保存的文件夹（VOC的目录格式未改变）;./tfrecords_  为自己建立的保存tfrecords数据的文件夹       
+
+8.训练模型train_ssd_network.py文件中修改
+
+9.通过加载预训练好的vgg16模型,训练网络
+
+注:使用百度网盘,先转存到自己的网盘下,再下载.
+
+10.训练
+
+注:(1)在SSD-Tensorflow-master文件夹下创建train_model文件夹
+
+在SSD-Tensorflow中运行终端terminal,在其上运行train_ssd_network.py文件,命令如下：
+
+SSD-Tensorflow$ python3 ./train_ssd_network.py --train_dir=./train_model/ --dataset_dir=./tfrecords_/ --dataset_name=pascalvoc_2007 --dataset_split_name=train --model_name=ssd_300_vgg  --checkpoint_path=./checkpoints/vgg_16.ckpt  --checkpoint_model_scope=vgg_16 --checkpoint_exclude_scopes=ssd_300_vgg/conv6,ssd_300_vgg/conv7,ssd_300_vgg/block8,ssd_300_vgg/block9,ssd_300_vgg/block10,ssd_300_vgg/block11,ssd_300_vgg/block4_box,ssd_300_vgg/block7_box,ssd_300_vgg/block8_box,ssd_300_vgg/block9_box,ssd_300_vgg/block10_box,ssd_300_vgg/block11_box  --trainable_scopes=ssd_300_vgg/conv6,ssd_300_vgg/conv7,ssd_300_vgg/block8,ssd_300_vgg/block9,ssd_300_vgg/block10,ssd_300_vgg/block11,ssd_300_vgg/block4_box,ssd_300_vgg/block7_box,ssd_300_vgg/block8_box,ssd_300_vgg/block9_box,ssd_300_vgg/block10_box,ssd_300_vgg/block11_box --save_summaries_secs=60  --save_interval_secs=600  --weight_decay=0.0005 --optimizer=adam  --learning_rate=0.001   --learning_rate_decay_factor=0.94 --batch_size=24 --gpu_memory_fraction=0.9  
+
+11.其它问题可以参考原文和源代码网页上的网友留言.
+————————————————
+版权声明：本文为CSDN博主「qq_32951799」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/qq_32951799/article/details/82384308
