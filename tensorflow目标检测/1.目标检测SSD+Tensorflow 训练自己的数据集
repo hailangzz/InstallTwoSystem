@@ -1,0 +1,280 @@
+https://blog.csdn.net/weixin_39881922/article/details/80569803
+
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/weixin_39881922/article/details/80569803
+1.代码地址：https://github.com/balancap/SSD-Tensorflow，下载该代码到本地
+
+2.解压ssd_300_vgg.ckpt.zip 到checkpoint文件夹下
+
+
+
+3.测试一下看看，在notebooks中创建demo_test.py,其实就是复制ssd_notebook.ipynb中的代码，该py文件是完成对于单张图片的测试，对Jupyter不熟，就自己改了，感觉这样要方便一些。
+
+
+
+import os
+import math
+import random
+ 
+import numpy as np
+import tensorflow as tf
+import cv2
+ 
+slim = tf.contrib.slim
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import sys
+sys.path.append('../')
+from nets import ssd_vgg_300, ssd_common, np_methods
+from preprocessing import ssd_vgg_preprocessing
+from notebooks import visualization
+# TensorFlow session: grow memory when needed. TF, DO NOT USE ALL MY GPU MEMORY!!!
+gpu_options = tf.GPUOptions(allow_growth=True)
+config = tf.ConfigProto(log_device_placement=False, gpu_options=gpu_options)
+isess = tf.InteractiveSession(config=config)
+# Input placeholder.
+net_shape = (300, 300)
+data_format = 'NHWC'
+img_input = tf.placeholder(tf.uint8, shape=(None, None, 3))
+# Evaluation pre-processing: resize to SSD net shape.
+image_pre, labels_pre, bboxes_pre, bbox_img = ssd_vgg_preprocessing.preprocess_for_eval(
+    img_input, None, None, net_shape, data_format, resize=ssd_vgg_preprocessing.Resize.WARP_RESIZE)
+image_4d = tf.expand_dims(image_pre, 0)
+ 
+# Define the SSD model.
+reuse = True if 'ssd_net' in locals() else None
+ssd_net = ssd_vgg_300.SSDNet()
+with slim.arg_scope(ssd_net.arg_scope(data_format=data_format)):
+    predictions, localisations, _, _ = ssd_net.net(image_4d, is_training=False, reuse=reuse)
+ 
+# Restore SSD model.
+ckpt_filename = '../checkpoints/ssd_300_vgg.ckpt'
+# ckpt_filename = '../checkpoints/VGG_VOC0712_SSD_300x300_ft_iter_120000.ckpt'
+isess.run(tf.global_variables_initializer())
+saver = tf.train.Saver()
+saver.restore(isess, ckpt_filename)
+ 
+# SSD default anchor boxes.
+ssd_anchors = ssd_net.anchors(net_shape)
+ 
+ 
+# Main image processing routine.
+def process_image(img, select_threshold=0.5, nms_threshold=.45, net_shape=(300, 300)):
+    # Run SSD network.
+    rimg, rpredictions, rlocalisations, rbbox_img = isess.run([image_4d, predictions, localisations, bbox_img],
+                                                              feed_dict={img_input: img})
+ 
+    # Get classes and bboxes from the net outputs.
+    rclasses, rscores, rbboxes = np_methods.ssd_bboxes_select(
+        rpredictions, rlocalisations, ssd_anchors,
+        select_threshold=select_threshold, img_shape=net_shape, num_classes=21, decode=True)
+ 
+    rbboxes = np_methods.bboxes_clip(rbbox_img, rbboxes)
+    rclasses, rscores, rbboxes = np_methods.bboxes_sort(rclasses, rscores, rbboxes, top_k=400)
+    rclasses, rscores, rbboxes = np_methods.bboxes_nms(rclasses, rscores, rbboxes, nms_threshold=nms_threshold)
+    # Resize bboxes to original image shape. Note: useless for Resize.WARP!
+    rbboxes = np_methods.bboxes_resize(rbbox_img, rbboxes)
+    return rclasses, rscores, rbboxes
+# Test on some demo image and visualize output.
+#测试的文件夹
+path = '../demo/'
+image_names = sorted(os.listdir(path))
+#文件夹中的第几张图，-1代表最后一张
+img = mpimg.imread(path + image_names[-1])
+rclasses, rscores, rbboxes =  process_image(img)
+ 
+# visualization.bboxes_draw_on_img(img, rclasses, rscores, rbboxes, visualization.colors_plasma)
+visualization.plt_bboxes(img, rclasses, rscores, rbboxes)
+ 
+
+		
+4.将自己的数据集做成VOC2007格式放在该工程下面
+
+			
+5. 修改datasets文件夹中pascalvoc_common.py文件，将训练类修改别成自己的
+
+#原始的
+# VOC_LABELS = {
+#     'none': (0, 'Background'),
+#     'aeroplane': (1, 'Vehicle'),
+#     'bicycle': (2, 'Vehicle'),
+#     'bird': (3, 'Animal'),
+#     'boat': (4, 'Vehicle'),
+#     'bottle': (5, 'Indoor'),
+#     'bus': (6, 'Vehicle'),
+#     'car': (7, 'Vehicle'),
+#     'cat': (8, 'Animal'),
+#     'chair': (9, 'Indoor'),
+#     'cow': (10, 'Animal'),
+#     'diningtable': (11, 'Indoor'),
+#     'dog': (12, 'Animal'),
+#     'horse': (13, 'Animal'),
+#     'motorbike': (14, 'Vehicle'),
+#     'person': (15, 'Person'),
+#     'pottedplant': (16, 'Indoor'),
+#     'sheep': (17, 'Animal'),
+#     'sofa': (18, 'Indoor'),
+#     'train': (19, 'Vehicle'),
+#     'tvmonitor': (20, 'Indoor'),
+# }
+#修改后的
+VOC_LABELS = {
+    'none': (0, 'Background'),
+    'pantograph':(1,'Vehicle'),
+}
+6.  将图像数据转换为tfrecods格式，修改datasets文件夹中的pascalvoc_to_tfrecords.py文件，然后更改文件的83行读取方式为’rb‘，如果你的文件不是.jpg格式，也可以修改图片的类型。
+
+
+
+此外， 修改67行，可以修改几张图片转为一个tfrecords
+
+
+
+7.运行tf_convert_data.py文件，但是需要传给它一些参数：
+
+linux	
+在SSD-Tensorflow-master文件夹下创建tf_conver_data.sh,文件写入内容如下：
+
+DATASET_DIR=./VOC2007/     #VOC数据保存的文件夹（VOC的目录格式未改变）  
+OUTPUT_DIR=./tfrecords_  #自己建立的保存tfrecords数据的文件夹       
+python ./tf_convert_data.py \     
+  --dataset_name=pascalvoc \         
+  --dataset_dir=${DATASET_DIR} \   
+  --output_name=voc_2007_train \ 
+  --output_dir=${OUTPUT_DIR}  
+
+windows     +pychram
+
+配置pycharm-->run-->Edit Configuration
+
+Script parameters中写入：--dataset_name=pascalvoc --dataset_dir=./VOC2007/ --output_name=voc_2007_train --output_dir=./tfrecords_
+
+运行tf_convert_data.py文件
+
+
+
+生成tfrecords文件过程中你会看到	生成tfrecords文件完毕后你会看到
+ 
+
+
+
+
+8.训练模型train_ssd_network.py文件中修改
+
+ 
+
+train_ssd_network.py文件中网络参数配置，若需要改，在此文件中进行修改，如：
+
+
+
+其他需要修改的地方
+
+a.   nets/ssd_vgg_300.py  (因为使用此网络结构) ，修改87 和88行的类别	
+b. train_ssd_network.py,修改类别120行，GPU占用量，学习率，batch_size等	
+ c eval_ssd_network.py 修改类别，66行	
+d. datasets/pascalvoc_2007.py 根据自己的训练数据修改整个文件	
+# (Images, Objects) statistics on every class.
+# TRAIN_STATISTICS = {
+# 'none': (0, 0),
+# 'aeroplane': (238, 306),
+# 'bicycle': (243, 353),
+# 'bird': (330, 486),
+# 'boat': (181, 290),
+# 'bottle': (244, 505),
+# 'bus': (186, 229),
+# 'car': (713, 1250),
+# 'cat': (337, 376),
+# 'chair': (445, 798),
+# 'cow': (141, 259),
+# 'diningtable': (200, 215),
+# 'dog': (421, 510),
+# 'horse': (287, 362),
+# 'motorbike': (245, 339),
+# 'person': (2008, 4690),
+# 'pottedplant': (245, 514),
+# 'sheep': (96, 257),
+# 'sofa': (229, 248),
+# 'train': (261, 297),
+# 'tvmonitor': (256, 324),
+# 'total': (5011, 12608),
+# }
+# TEST_STATISTICS = {
+# 'none': (0, 0),
+# 'aeroplane': (1, 1),
+# 'bicycle': (1, 1),
+# 'bird': (1, 1),
+# 'boat': (1, 1),
+# 'bottle': (1, 1),
+# 'bus': (1, 1),
+# 'car': (1, 1),
+# 'cat': (1, 1),
+# 'chair': (1, 1),
+# 'cow': (1, 1),
+# 'diningtable': (1, 1),
+# 'dog': (1, 1),
+# 'horse': (1, 1),
+# 'motorbike': (1, 1),
+# 'person': (1, 1),
+# 'pottedplant': (1, 1),
+# 'sheep': (1, 1),
+# 'sofa': (1, 1),
+# 'train': (1, 1),
+# 'tvmonitor': (1, 1),
+# 'total': (20, 20),
+# }
+# SPLITS_TO_SIZES = {
+# 'train': 5011,
+# 'test': 4952,
+# }
+# (Images, Objects) statistics on every class.
+TRAIN_STATISTICS = {
+'none': (0, 0),
+'pantograph': (1000, 1000),
+}
+TEST_STATISTICS = {
+'none': (0, 0),
+'pantograph': (1000, 1000),
+}
+SPLITS_TO_SIZES = {
+'train': 500,
+'test': 500,
+}
+9.通过加载预训练好的vgg16模型,训练网络
+
+下载预训练好的vgg16模型，解压放入checkpoint文件中，如果找不到vgg_16.ckpt文件，可以在下面的链接中点击下载。
+
+
+
+链接：https://pan.baidu.com/s/1diWbdJdjVbB3AWN99406nA 密码：ge3x
+
+按照之前的方式，同样，如果你是linux用户，你可以新建一个.sh文件，文件里写入
+
+DATASET_DIR=./tfrecords_/
+TRAIN_DIR=./train_model/
+CHECKPOINT_PATH=./checkpoints/vgg_16.ckpt
+  
+python3 ./train_ssd_network.py \  
+    --train_dir=./train_model/ \      #训练生成模型的存放路径  
+    --dataset_dir=./tfrecords_/ \  #数据存放路径  
+    --dataset_name=pascalvoc_2007 \ #数据名的前缀  
+    --dataset_split_name=train \  
+    --model_name=ssd_300_vgg \      #加载的模型的名字  
+    --checkpoint_path=./checkpoints/vgg_16.ckpt \  #所加载模型的路径  
+    --checkpoint_model_scope=vgg_16 \   #所加载模型里面的作用域名  
+    --checkpoint_exclude_scopes=ssd_300_vgg/conv6,ssd_300_vgg/conv7,ssd_300_vgg/block8,ssd_300_vgg/block9,ssd_300_vgg/block10,ssd_300_vgg/block11,ssd_300_vgg/block4_box,ssd_300_vgg/block7_box,ssd_300_vgg/block8_box,ssd_300_vgg/block9_box,ssd_300_vgg/block10_box,ssd_300_vgg/block11_box \  
+    --trainable_scopes=ssd_300_vgg/conv6,ssd_300_vgg/conv7,ssd_300_vgg/block8,ssd_300_vgg/block9,ssd_300_vgg/block10,ssd_300_vgg/block11,ssd_300_vgg/block4_box,ssd_300_vgg/block7_box,ssd_300_vgg/block8_box,ssd_300_vgg/block9_box,ssd_300_vgg/block10_box,ssd_300_vgg/block11_box \  
+    --save_summaries_secs=60 \  #每60s保存一下日志  
+    --save_interval_secs=600 \  #每600s保存一下模型  
+    --weight_decay=0.0005 \     #正则化的权值衰减的系数  
+    --optimizer=adam \          #选取的最优化函数  
+    --learning_rate=0.001 \     #学习率  
+    --learning_rate_decay_factor=0.94 \ #学习率的衰减因子  
+    --batch_size=24 \     
+    --gpu_memory_fraction=0.9   #指定占用gpu内存的百分比 
+如果你是windows+pycharm中运行，除了在上述的run中Edit Configuration配置，你还可以打开Terminal，在这里运行代码，输入即可
+
+python ./train_ssd_network.py  --train_dir=./train_model/  --dataset_dir=./tfrecords_/  --dataset_name=pascalvoc_2007 --dataset_split_name=train --model_name=ssd_300_vgg   --checkpoint_path=./checkpoints/vgg_16.ckpt   --checkpoint_model_scope=vgg_16 --checkpoint_exclude_scopes=ssd_300_vgg/conv6,ssd_300_vgg/conv7,ssd_300_vgg/block8,ssd_300_vgg/block9,ssd_300_vgg/block10,ssd_300_vgg/block11,ssd_300_vgg/block4_box,ssd_300_vgg/block7_box,ssd_300_vgg/block8_box,ssd_300_vgg/block9_box,ssd_300_vgg/block10_box,ssd_300_vgg/block11_box   --trainable_scopes=ssd_300_vgg/conv6,ssd_300_vgg/conv7,ssd_300_vgg/block8,ssd_300_vgg/block9,ssd_300_vgg/block10,ssd_300_vgg/block11,ssd_300_vgg/block4_box,ssd_300_vgg/block7_box,ssd_300_vgg/block8_box,ssd_300_vgg/block9_box,ssd_300_vgg/block10_box,ssd_300_vgg/block11_box --save_summaries_secs=60   --save_interval_secs=600 --weight_decay=0.0005   --optimizer=adam   --learning_rate=0.001 --learning_rate_decay_factor=0.94   --batch_size=24      --gpu_memory_fraction=0.9    
+ 
+————————————————
+版权声明：本文为CSDN博主「zcc_TPJH」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/weixin_39881922/article/details/80569803
