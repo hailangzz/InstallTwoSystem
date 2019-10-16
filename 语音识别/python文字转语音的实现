@@ -1,0 +1,31 @@
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/qq_18820125/article/details/91411355
+利用Python将文字转为语音播放
+挺简单的代码，几分钟就可以做好，下面介绍一下
+
+首先，安装pyttsx3依赖包，很简单 win+R 打开运行，输入 cmd 回车，进入控制台，键入以下代码：
+pip install pyttsx3
+1
+注： 适用于python3，如果是python2，请使用 pip install pyttsx ，下面代码也做相应改变
+
+copy下面代码，运行就好了：
+# coding=utf-8
+
+import pyttsx3
+
+text='hello,world'
+voice=pyttsx3.init()
+voice.say(text)
+voice.runAndWait()
+1
+2
+3
+4
+5
+6
+7
+8
+实现起来非常简单，如果结合网络爬虫，可以实现天气预报的播放，新闻播报等功能，还挺好玩儿
+————————————————
+版权声明：本文为CSDN博主「怎么不去做机械」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/qq_18820125/article/details/91411355
