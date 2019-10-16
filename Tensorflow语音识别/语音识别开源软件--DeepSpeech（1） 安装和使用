@@ -1,0 +1,285 @@
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/weixin_36071429/article/details/86554065
+语音转文字开源软件- DeepSpeech（1） 安装和使用
+DeepSpeech Git 地址：https://github.com/mozilla/DeepSpeech
+Mozilla 的语料库：https://voice.mozilla.org/en/languages
+实验
+克隆Git: git clone https://github.com/mozilla/DeepSpeech
+下载训练好model: wget https://github.com/mozilla/DeepSpeech/releases/download/v0.4.1/deepspeech-0.4.1-models.tar.gz
+解压： tar xvfz deepspeech-0.4.1-models.tar.gz
+下载测试音频：
+wget https://github.com/mozilla/DeepSpeech/releases/download/v0.4.1/audio-0.4.1.tar.gz
+解压: tar xvfz audio-0.4.1.tar.gz
+安裝： pip3 install deepspeech-gpu
+帮助： deepspeech --help
+测试功能：
+deepspeech --model models/output_graph.pbmm --alphabet models/alphabet.txt --lm models/lm.binary --trie models/trie --audio my_audio_file.wav
+如何用python 调用模型
+`
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, division, print_function
+
+import argparse
+import numpy as np
+import shlex
+import subprocess
+import sys
+import wave
+
+from deepspeech import Model, printVersions
+from timeit import default_timer as timer
+
+try:
+    from shhlex import quote
+except ImportError:
+    from pipes import quote
+
+# These constants control the beam search decoder
+
+# Beam width used in the CTC decoder when building candidate transcriptions
+BEAM_WIDTH = 500
+
+# The alpha hyperparameter of the CTC decoder. Language Model weight
+LM_ALPHA = 0.75
+
+# The beta hyperparameter of the CTC decoder. Word insertion bonus.
+LM_BETA = 1.85
+
+
+# These constants are tied to the shape of the graph used (changing them changes
+# the geometry of the first layer), so make sure you use the same constants that
+# were used during training
+
+# Number of MFCC features to use
+N_FEATURES = 26
+
+# Size of the context window used for producing timesteps in the input vector
+N_CONTEXT = 9
+
+def convert_samplerate(audio_path):
+    sox_cmd = 'sox {} --type raw --bits 16 --channels 1 --rate 16000 --encoding signed-integer --endian little --compression 0.0 --no-dither - '.format(quote(audio_path))
+    try:
+        output = subprocess.check_output(shlex.split(sox_cmd), stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError('SoX returned non-zero status: {}'.format(e.stderr))
+    except OSError as e:
+        raise OSError(e.errno, 'SoX not found, use 16kHz files or install it: {}'.format(e.strerror))
+
+    return 16000, np.frombuffer(output, np.int16)
+
+
+class VersionAction(argparse.Action):
+    def __init__(self, *args, **kwargs):
+        super(VersionAction, self).__init__(nargs=0, *args, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        printVersions()
+        exit(0)
+
+def main():
+    parser = argparse.ArgumentParser(description='Running DeepSpeech inference.')
+    parser.add_argument('--model', required=True,
+                        help='Path to the model (protocol buffer binary file)')
+    parser.add_argument('--alphabet', required=True,
+                        help='Path to the configuration file specifying the alphabet used by the network')
+    parser.add_argument('--lm', nargs='?',
+                        help='Path to the language model binary file')
+    parser.add_argument('--trie', nargs='?',
+                        help='Path to the language model trie file created with native_client/generate_trie')
+    parser.add_argument('--audio', required=True,
+                        help='Path to the audio file to run (WAV format)')
+    parser.add_argument('--version', action=VersionAction,
+                        help='Print version and exits')
+    args = parser.parse_args()
+
+    print('Loading model from file {}'.format(args.model), file=sys.stderr)
+    model_load_start = timer()
+    ds = Model(args.model, N_FEATURES, N_CONTEXT, args.alphabet, BEAM_WIDTH)
+    model_load_end = timer() - model_load_start
+    print('Loaded model in {:.3}s.'.format(model_load_end), file=sys.stderr)
+
+    if args.lm and args.trie:
+        print('Loading language model from files {} {}'.format(args.lm, args.trie), file=sys.stderr)
+        lm_load_start = timer()
+        ds.enableDecoderWithLM(args.alphabet, args.lm, args.trie, LM_ALPHA, LM_BETA)
+        lm_load_end = timer() - lm_load_start
+        print('Loaded language model in {:.3}s.'.format(lm_load_end), file=sys.stderr)
+
+    fin = wave.open(args.audio, 'rb')
+    fs = fin.getframerate()
+    if fs != 16000:
+        print('Warning: original sample rate ({}) is different than 16kHz. Resampling might produce erratic speech recognition.'.format(fs), file=sys.stderr)
+        fs, audio = convert_samplerate(args.audio)
+    else:
+        audio = np.frombuffer(fin.readframes(fin.getnframes()), np.int16)
+
+    audio_length = fin.getnframes() * (1/16000)
+    fin.close()
+
+    print('Running inference.', file=sys.stderr)
+    inference_start = timer()
+    print(ds.stt(audio, fs))
+    inference_end = timer() - inference_start
+    print('Inference took %0.3fs for %0.3fs audio file.' % (inference_end, audio_length), file=sys.stderr)
+
+if __name__ == '__main__':
+    main()
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+`
+
+调用语句
+python3 client.py --model models/output_graph.pbmm --alphabet models/alphabet.txt --lm models/lm.binary --trie models/trie --audio audio/4507-16021-0012.wav
+
+Traing测试例子
+什么是git lfs
+Git LFS 的注意事项参考资料Git LFS（Large File Storage, 大文件存储）是可以把音乐、图片、视频等指定的任意文件存在 Git 仓库之外，而在 Git 仓库中用一个占用空间 1KB 不到的文本指针来代替的小工具。通过把大文件存储在 Git 仓库之外，可以减小 Git 仓库本身的体积，使克隆 Git 仓库的速度加快，也使得 Git 不会因为仓库中充满大文件而损失性能。使用 Git LFS，在默认情况下，只有当前签出的 commit 下的 LFS 对象的当前版本会被下载。此外，我们也可以做配置，只取由 Git LFS 管理的某些特定文件的实际内容，而对于其他由 Git LFS 管理的文件则只保留文件指针，从而节省带宽，加快克隆仓库的速度；也可以配置一次获取大文件的最近版本，从而能方便地检查大文件的近期变动
+
+Traning LDC03s1
+1.用git lfs克隆
+
+git lfs clone https://github.com/mozilla/DeepSpeech
+
+2.下载ldc03s1
+
+bin/import_ldc93s1.py data/ldc93s1
+
+3.安装所以需要的包
+
+pip3 install -r requirements.txt
+
+4.切换到稳定分支
+
+python util/taskcluster.py --branch v0.2.0-alpha.6 --target native_client/
+
+5.运行.sh
+
+./bin/run-ldc93s1.sh
+
+python -u DeepSpeech.py
+–train_files data/ldc93s1/ldc93s1.csv
+–dev_files data/ldc93s1/ldc93s1.csv
+–test_files data/ldc93s1/ldc93s1.csv
+–train_batch_size 1
+–dev_batch_size 1
+–test_batch_size 1
+–n_hidden 494
+–epoch 3
+–checkpoint_dir “KaTeX parse error: Expected 'EOF', got '\ ' at position 17: …heckpoint_dir" \̲ ̲ --export_dir …@”
+
+6.查看模型
+
+ls /tmp/ldc93s1/
+output_graph.pb
+————————————————
+版权声明：本文为CSDN博主「VickyG9」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/weixin_36071429/article/details/86554065
