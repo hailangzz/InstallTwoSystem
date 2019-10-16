@@ -1,0 +1,310 @@
+https://www.helplib.com/GitHub/article_154458
+
+源代码名称:DeepSpeech
+源代码网址:http://www.github.com/mozilla/DeepSpeech
+DeepSpeech源代码文档
+DeepSpeech源代码下载
+Git URL:复制代码
+git://www.github.com/mozilla/DeepSpeech.git
+Git Clone代码到本地:复制代码
+git clone http://www.github.com/mozilla/DeepSpeech
+Subversion代码到本地:复制代码
+$ svn co --depth empty http://www.github.com/mozilla/DeepSpeech
+Checked out revision 1.
+$ cd repo
+$ svn up trunk
+项目 DeepSpeech
+Documentation StatusTask Status
+
+Project DeepSpeech是一个开源Speech-To-Text引擎，使用机器学习技术训练的模型，基于深度的百度语音研究论文。 项目DeepSpeech使用了google项目的，使实现更加简单。
+
+Usage
+
+可以使用 pip3 安装可以用于执行带训练模型的推理的预生成二进制文件。 建议使用虚拟环境的正确设置，你可以在下面找到该文档的 。
+
+可以使用预先训练的英文模型，并且可以使用以下命令下载。
+
+安装完所有内容后，你可以使用 deepspeech 二进制文件在短的大约 5秒，音频文件( 目前 python 客户端只支持带有 16位，16 kHz，mono的波形文件) 上执行 speech-to-text:
+
+复制代码
+pip3 install deepspeech
+deepspeech --model models/output_graph.pbmm --alphabet models/alphabet.txt --lm models/lm.binary --trie models/trie --audio my_audio_file.wav
+或者，可以通过在Linux上使用NVIDIA来执行快速推理。 ( 请参阅发行说明以找到支持哪些 GPU ) 这是通过安装GPU特定软件包来完成的：
+
+复制代码
+pip3 install deepspeech-gpu
+deepspeech --model models/output_graph.pbmm --alphabet models/alphabet.txt --lm models/lm.binary --trie models/trie --audio my_audio_file.wav
+有关使用 deepspeech的更多信息，请参见 deepspeech -h的输出。 ( 如果运行 deepspeech 时遇到问题，请检查是否需要运行时依赖项)。
+
+目录
+
+先决条件
+得到代码。
+获得前面的列车型号。
+使用模型模型。
+使用 python 包
+使用 命令行 客户端
+使用 node.js 包
+安装来自源服务器的绑定
+第三方绑定
+火车
+安装的先决条件。
+推荐
+通用语音训练数据
+训练模型模型。
+检查点检查
+导出一个用于推理的模型。
+将计算机分布在一台上的机器上。
+从冻结图形中继续训练。
+代码文档
+联系人/获取帮助信息
+先决条件
+python 3.6
+Git大文件存储库
+正在获取代码
+在系统上手动或者通过像这样的包安装 Git大文件存储插件。 然后正常克隆DeepSpeech存储库：
+
+复制代码
+git clone https://github.com/mozilla/DeepSpeech
+获得预训练模型
+如果要使用预先训练的英文模型执行 speech-to-text，则可以从DeepSpeech发布版 download下载它。 或者，可以运行以下命令下载和解压缩当前目录中的文件：
+
+复制代码
+wget -O - https://github.com/mozilla/DeepSpeech/releases/download/v0.1.1/deepspeech-0.1.1-models.tar.gz | tar xvfz -
+使用模型
+使用DeepSpeech推理有三种方法：
+
+python 软件包包
+命令行客户端
+node.js 软件包包
+使用 python-软件包
+可以使用 pip3 安装可以用于执行带训练模型的推理的预生成二进制文件。 然后，你可以使用 deepspeech 二进制文件在音频 file: 上执行 speech-to-text
+
+对于 python 绑定，强烈建议你在 python 3.5或者更高版本的虚拟环境中执行安装。 你可以在中找到关于这些文档的更多信息。 在假设你已经正确设置了系统以创建新虚拟环境的前提下，我们将继续。
+
+创建DeepSpeech虚拟环境
+在创建虚拟环境时，你将创建包含 python3 二进制文件的目录以及运行deepspeech所需。 你可以使用任何你想要的目录。 出于文档的目的，我们将依赖 $HOME/tmp/deepspeech-venv。 你可以使用以下命令创建它：
+
+复制代码
+
+$ virtualenv -p python3 $HOME/tmp/deepspeech-venv/
+
+
+成功完成这里命令后，环境将准备就绪，可以激活。
+
+激活环境
+每次需要使用DeepSpeech时，都必须激活 activate 负载这个虚拟环境。 这是用这个简单的命令完成的：
+
+复制代码
+
+$ source $HOME/tmp/deepspeech-venv/bin/activate
+
+
+安装 DeepSpeech python-绑定
+设置并加载环境后，可以使用 pip3 在本地管理包。 重新安装 virtualenv 时，你必须安装DeepSpeech轮。 你可以查看 pip3 list的输出来检查它是否已经安装。 要执行安装，只需发出以下命令：
+
+复制代码
+
+$ pip3 install deepspeech
+
+
+如果已经安装，你还可以更新它：
+
+复制代码
+
+$ pip3 install --upgrade deepspeech
+
+
+另外，如果你在 Linux (。查看发行说明以查找支持哪些 GPU。) 上拥有支持的NVIDIA GPU，则可以按如下方式安装GPU特定软件包：
+
+复制代码
+
+$ pip3 install deepspeech-gpu
+
+
+或者按如下方式更新它：
+
+复制代码
+
+$ pip3 install --upgrade deepspeech-gpu
+
+
+在这两种情况下，它都应该负责安装所有必需的依赖项。 完成后，你就可以在命令行中使用 deepspeech 调用示例二进制文件了。
+
+注意：以下命令假设你已经下载了预训练过的模型。
+
+复制代码
+deepspeech --model models/output_graph.pbmm --alphabet models/alphabet.txt --lm models/lm.binary --trie models/trie --audio my_audio_file.wav
+最后两个参数是可选的，并表示语言模型。
+
+有关如何以编程方式使用包的示例，请参见 client.py。
+
+使用命令行客户端
+若要下载预生成的二进制文件，请使用 util/taskcluster.py:
+
+复制代码
+python3 util/taskcluster.py --target .
+或者如果你在 macOS 上：
+
+复制代码
+python3 util/taskcluster.py --arch osx --target .
+另外，如果需要与当前主机不同的二进制文件，如 v0.2.0-alpha.6，则可以使用 --branch:
+
+复制代码
+python3 util/taskcluster.py --branch "v0.2.0-alpha.6 --target. "
+下载包含deepspeech二进制和相关库的native_client.tar.xz，并将它的解压到当前文件夹中。 taskcluster.py 默认会下载 linux/x86_64的二进制文件，但是你可以使用 --arch 参数覆盖该行为。 有关详细信息，请参阅 python util/taskcluster.py -h的帮助信息。 可以指定适当的DeepSpeech或者tensorflow分支。
+
+注意：以下命令假设你已经下载了预训练过的模型。
+
+复制代码
+./deepspeech --model models/output_graph.pbmm --alphabet models/alphabet.txt --lm models/lm.binary --trie models/trie --audio audio_input.wav
+查看带有 ./deepspeech -h 和本机客户端自述文件的帮助输出。
+
+使用 node.js-软件包
+你可以使用 npm 下载 node.js 绑定：
+
+复制代码
+npm install deepspeech
+另外，如果你使用的是Linux并且有支持的NVIDIA GPU (。查看发行说明以查找支持哪些 GPU。)，你可以按如下方式安装GPU特定软件包：
+
+复制代码
+npm install deepspeech-gpu
+有关如何使用绑定的示例，请参见 client.js。
+
+从源代码安装绑定
+如果预先生成的二进制文件不适用于你的系统，你将需要从头安装它们。 请按照以下说明操作。
+
+第三方绑定
+除了上绑定之外，第三方开发人员已经开始提供对其他语言的绑定：
+
+在 Asticode 中提供了 Golang绑定，它的。
+在 RustAudio 提供一个 Rust 绑定，它的安装和使用在它的deepspeech-rs repo 中描述。
+在 Arch Linux 中，STEs提供了初步的PKGBUILDs安装客户机和 python 绑定，在arch-deepspeech。
+提供了一个可以从任何具有GStreamer绑定的语言中使用的插件插件。
+培训
+安装培训先决条件
+使用pip安装所需的依赖项：
+
+复制代码
+cd DeepSpeech
+pip3 install -r requirements.txt
+你还需要下载 native_client.tar.xz 或者自己构建本地客户端文件，以获取解码神经网络输出所需的定制TensorFlow操作。 你可以使用 util/taskcluster.py 下载架构的文件：
+
+复制代码
+python3 util/taskcluster.py --target .
+这将下载没有CUDA支持的x86_64架构的本地客户机文件，并将它们提取到当前文件夹中。 如果你希望从源代码构建二进制文件，请参见 native_client README文件。 我们还拥有支持("--arch gpu") 和 ARM7 ("--arch arm")的二进制文件。
+
+推荐
+如果你有能力的( Nvidia，至少 8GB的硬盘) GPU，强烈建议你安装TensorFlow支持GPU支持。 培训可能比使用CPU要快得多。 要启用GPU支持，你可以执行以下操作：
+
+复制代码
+pip3 uninstall tensorflow
+pip3 install 'tensorflow-gpu==1.6.0'
+通用语音训练数据
+通用语音语料库由通过公共语音系统捐赠的语音样本组成。 我们提供了一个导入器，它自动完成了下载和准备语料库的整个过程。 你只要指定一个目标目录，所有常用的语音内容都应该去。 如果你已经从这里下载了通用语音语料库归档，那么可以在目录所在的目录上运行导入脚本。 导入器随后跳过下载，并立即对它的进行包装和导入。 要启动导入过程，你可以调用：
+
+复制代码
+bin/import_cv.py path/to/target/directory
+请注意，这需要至少 70GB 个可用磁盘空间，并且需要花相当长的时间。 由于这个过程创建了大量的小文件，所以强烈推荐使用SSD驱动器。 如果导入脚本被中断，它将尝试从停止下一次运行的位置继续。 不幸的是，在某些情况下，需要重新开始。 导入完成后，目录将包含一堆CSV文件。
+
+以下文件是用于培训，验证和测试的正式用户验证集：
+
+cv-valid-train.csv
+cv-valid-dev.csv
+cv-valid-test.csv
+以下文件是用于培训，验证和测试的非验证非官方集：
+
+cv-other-train.csv
+cv-other-dev.csv
+cv-other-test.csv
+cv-invalid.csv 包含用户标记为无效的所有示例。
+
+名为 cv_corpus_{version}的子目录包含从名为 cv_corpus_{version}.tar.gz的归档文件中提取的mp3和wav文件。 CSV文件中的所有条目都以绝对路径引用它们的示例。 因此移动这个子目录需要另外导入或者调整CSV文件。
+
+通过在培训。验证和测试过程中使用通用语音数据，将( 逗号分隔的组合)的文件名传递给。--dev_files。--test_files 参数的。 例如如果将普通语音导入 ../data/CV，则可以像这样调用 DeepSpeech.py:
+
+复制代码
+./DeepSpeech.py --train_files.. /data/CV/cv-valid-train.csv --dev_files.. /data/CV/cv-valid-dev.csv --test_files.. /data/CV/cv-valid-test.csv
+如果你足够敢心，还可以包含 other 数据集，它的中包含not-yet-validated内容，因这里可以时间断开：
+
+复制代码
+./DeepSpeech.py --train_files.. /data/CV/cv-valid-train.csv,../data/CV/cv-other-train.csv --dev_files.. /data/CV/cv-valid-dev.csv --test_files.. /data/CV/cv-valid-test.csv
+培训模型
+中央( python ) 脚本在项目目录的root 中是 DeepSpeech.py。 对于它的命令行 选项列表，你可以调用：
+
+复制代码
+./DeepSpeech.py --help
+为了以稍好的格式化方式获得这个输出，你还可以查找 DeepSpeech.py的选项定义。
+
+为了执行预先配置好的培训场景，bin 文件夹中有一组方便的脚本。 其中大多数都是根据配置的语料库命名的。 记住，其他语音语料库的大小非常大，有几十兆字节，有些是免费的，有些是不免费的。 下载和预处理可以能需要很长时间，而且不需要快速的GPU (。GTX 10系列推荐) 就可以进行训练。
+
+training --train_batch_size，--dev_batch_size 和 --test_batch_size 参数时，尝试减少批处理大小，如果遇到OOM错误，请尝试。
+
+作为一个简单的第一个示例，你可以打开终端，更改为DeepSpeech签出和运行的目录：
+
+复制代码
+./bin/run-ldc93s1.sh
+这个脚本将训练一个叫做LDC93S1的小样本数据集，它可以在几分钟内在GPU上为演示目的提供支持。 从这里可以改变所使用数据集的任何变量，运行多少个培训迭代和网络参数的默认值。 还可以自由地将额外的( 或者重写) DeepSpeech.py 参数传递给。 然后，运行脚本来训练修改后的网络。
+
+每个数据集都有 bin/ 中对应的导入器脚本，可以用于下载( 如果可用的话) 并预处理数据集。 有关如何导入和预处理大型数据集以使用深层语音进行训练的示例，请参见 bin/import_librivox.py。
+
+如果你运行了旧的导入器( 在 util/importers/ 中)，他们可以能已经删除了新导入器运行所需的源文件。 在这种情况下，只需删除提取的文件夹，让导入程序从头提取并处理数据集。
+
+检查点
+在训练模型时，所谓的检查点将存储在磁盘上。 这发生在可以配置的时间间隔。 检查点的目的是允许中断( 在某些意外故障的情况下) 和以后的训练继续，而不会丢失培训时间。 从检查点恢复会自动通过与前一个运行的--checkpoint_dir 相同的( re ) 启动培训来自动发生。
+
+注意检查点仅对它们生成的相同模型几何图元有效。 换句话说：如果某些 Tensors 具有不兼容的维度的错误消息，这很可以能是不兼容的模型更改。 通常的方法是清除检查点目录中的所有检查点文件，或者在开始训练之前更改检查点文件。
+
+导出一个用于推理的模型
+如果提供 --export_dir 参数，则在培训期间将模型导出到这里目录。 有关生成和运行可以使用导出模型的客户端的信息，请参阅相应的README.md。
+
+为推理建立一个mmap模型
+在上面步骤生成的output_graph.pb 模型文件将在内存中加载，以便在运行推断时处理。 这将导致额外的加载时间和内存消耗。 避免这种情况的一种方法是直接从磁盘读取数据。
+
+TensorFlow有实现这里目的的工具： 它需要建立目标 //tensorflow/contrib/util:convert_graphdef_memmapped_format ( 二进制文件是由我们的TaskCluster生成的，有些系统包括 linux/，和 macOS/，)，用 util/taskcluster.py 工具来下载 tensorflow。 生成mmap可用模型的简单方法如下：
+
+复制代码
+
+$ convert_graphdef_memmapped_format --in_graph=output_graph.pb --out_graph=output_graph.pbmm
+
+
+在sucessfull运行时，应该报告关于非零节点数的转换。 如果报告转换 0节点，则出现错误： 确保你的模型是冻结的，并且你没有应用任何不兼容的更改( 这包括 quantize_weights )。
+
+跨多个机器分布列车
+DeepSpeech已经构建了支持分发TensorFlow的支持。 为了解决这个问题，你可以使用脚本 bin/run-cluster.sh 在本地计算机上运行与工作人员的群集。
+
+复制代码
+$ bin/run-cluster.sh --help
+Usage: run-cluster.sh [--help] [--script script] [p:w:g] <arg>*--help print this help message
+--script run the provided script instead of DeepSpeech.py
+p number of local parameter servers
+w number of local workers
+g number of local GPUs per worker<arg>* remaining parameters will be forwarded to DeepSpeech.py or a provided script
+Example usage - The following example will create a local DeepSpeech.py cluster
+with 1 parameter server, and 2 workers with 1 GPU each:
+$ run-cluster.sh 1:2:1 --epoch 10
+请注意，对于能够运行的帮助示例，至少需要两个 CUDA 能力的GPU ( 2工人时间 1 GPU )。 脚本使用环境变量 CUDA_VISIBLE_DEVICES 为 DeepSpeech.py 查看每个工作人员提供的数目的gpu。 脚本是一个用于你自己的分布式计算工具的模板。 只需修改不同服务器(。员工和参数服务器)的启动代码即可。 你可以使用SSH或者类似的方式在远程主机上运行它们。
+
+从冻结的图形继续训练
+如果你想使用由Mozilla发布的预约模型来 Bootstrap，你可以使用 DeepSpeech.py 中的--initialize_from_frozen_model 标志来进行( 转移学习，微调)。 要获得最佳结果，请确保在从冻结模型恢复时传递空的--checkpoint_dir。
+
+例如，如果要在 my-train.csv。my-dev.csv 和 my-test.csv 中使用自己的数据调整整个图形，可以像下面那样调优 hyperparameters:
+
+复制代码
+mkdir fine_tuning_checkpoints
+python3 DeepSpeech.py --n_hidden 2048 --initialize_from_frozen_model path/to/model/output_graph.pb --checkpoint_dir fine_tuning_checkpoints --epoch 3 --train_files my-train.csv --dev_files my-dev.csv --test_files my_dev.csv --learning_rate 0.0001
+注意：发布的模型使用 --n_hidden 2048 培训，因此在从发布模型中初始化时，你需要使用相同的值。
+
+代码文档
+可以在以下位置找到代码的文档( 不完整): http://deepspeech.readthedocs.io/en/latest/
+
+联系人/获取帮助
+有多种方法可以联系我们或者获取帮助：
+
+我们有一个常见的常见问题列表，我们有一个常见问题列表，以及他们的答案，在我们的FAQ。 刚开始时，最好先检查一下 FAQ，看看你的问题是否被解决了。
+
+如果你的问题没有在 FAQ 中解决的话，那么 Discourse 论坛将是下一个要查看的地方。 它们包含关于一般主题的会话使用深度语音，以及深度语音开发( )。
+
+如果你的问题没有被 FAQ 或者 Discourse 论坛addressed你可以联系我们的#machinelearning 频道，人们可以尝试回复/帮助
+
+如果你的所有其他问题都失败了，你可以在我们的repo 中打开一个问题。
