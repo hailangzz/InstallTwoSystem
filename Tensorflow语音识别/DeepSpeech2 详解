@@ -1,0 +1,168 @@
+2019-07-19 12:13:04 hyxxxxxx 阅读数 72更多
+分类专栏： 语音识别
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/xuan100e/article/details/96476248
+论文题目: Deep Speech 2: End-to-End Speech Recognition in English and Mandarin
+论文地址: https://arxiv.org/pdf/1512.02595.pdf
+tensorflow版本: https://github.com/mozilla/DeepSpeech
+pytorch版本: http://www.github.com/SeanNaren/deepspeech.pytorch
+
+一. 论文解读
+引用：https://blog.csdn.net/Code_Mart/article/details/87291644
+
+摘要
+模型结构
+文章亮点
+1. 摘要
+这篇论文是在2015年由Baidu AI Lab所发布的，依旧延续了上一篇论文的路线：抛弃复杂的传统框架，拥抱基于神经网络的端到端模型。这篇论文有三个亮点：1. 作者这次所训练的模型既识别英文语音，也识别中文（普通话）语音。 2. 作者利用 HPC 技术（High-performance Computing，即高性能计算），使得整个系统性能有了大幅的提高（得利于此，模型训练速度大幅提升，也引出了第三点）。3. 作者在 Deep Speech 的基础上做了大量修改与尝试：加深了网络深度，尝试了 (Bi-directional) Vanilla RNN 和 GRU，引进了1D/2D invariant convolution，引入 Batch Nomalization。
+
+2. 模型结构
+model input : spectrogram of power normalized audio clips as the features ，功率归一化音频剪辑的频谱图
+model output : 1. English: English character or blank symbol 2.Mandarin: simplified Chinese characters
+loss function : CTC loss，
+Author: 'We report Word Error Rate (WER) for the English system and Character Error Rate (CER) for the Mandarin system’
+
+模型由三部分组成 Conv layer, Recurrent layer, FC layer
+首先是 Conv layer:
+
+其次是 Recurrent layer:
+在这里插入图片描述
+
+最后是 FC layer:
+在这里插入图片描述
+此外，作者还在模型中加入了 Batch Normalization
+在这里插入图片描述
+
+3. 文章亮点
+数据并行化
+CTC loss function
+HPC
+高性能计算(High performance computing， 缩写HPC) 指通常使用很多处理器（作为单个机器的一部分）或者某一集群中组织的几台计算机（作为单个计 算资源操作）的计算系统和环境
+
+Cold Fusion(deep speech v3)
+百度开发了Cold Fusion，它可以在训练Seq2Seq模型的时候使用一个预训练的语言模型。百度在论文中表明，带有Cold Fusion的Seq2Seq模型可以更好地运用语言信息，带来了更好的泛化效果和更快的收敛，同时只需用不到10%的标注训练数据就可以完全迁移到一个新领域。Cold Fusion还可以在测试过程中切换不同的语言模型以便为任何内容优化。Cold Fusion能够用在Seq2Seq模型上的同时，它在RNN变换器上应当也能发挥出同样好的效果。
+相关论文:
+1.Exploring Neural Transducers for End-to-End Speech Recognition https://arxiv.org/abs/1707.07413
+2.Cold Fusion: Training Seq2Seq Models Together with Language Model https://arxiv.org/abs/1708.06426
+
+二. 环境准备
+deepspeech.pytorch是由SeanNaren所写的 pytorch版本，他本人同时贡献了Warp-CTC是CTCLoss的pytorch版本是目前使用较为广泛的CTCLoss(直接将log_softmax写入了函数)
+github地址: https://github.com/SeanNaren/deepspeech.pytorch
+
+1.安装Warp-CTC
+git clone https://github.com/SeanNaren/warp-ctc.git
+cd warp-ctc; mkdir build; cd build; cmake ..; make
+cd ../pytorch_binding && python setup.py install
+1
+2
+3
+注意事项：
+
+需要安装cmake
+安装过后如果不能直接import warp_pytorch需要关掉终端重新开启即可
+2. 安装pytorch audio
+sudo apt-get install sox libsox-dev libsox-fmt-all
+git clone https://github.com/pytorch/audio.git
+cd audio && python setup.py install
+1
+2
+3
+注意事项
+
+因为这只是一个读取音频的库 有很多类似的例如librosa scipy都可以实现相似的功能 并且我在安装时报错 所以没有安装
+如果选择不安装的话 只需要修改 data/data_loader.py即可
+3. 安装 NVIDIA apex
+git clone --recursive https://github.com/NVIDIA/apex.git
+cd apex && pip install .
+1
+2
+注意事项:
+
+安装过程中可能出现各种问题 去apex中查看具体安装方式
+此项用于FP16 半精度计算 如果不需要可以不安 (pytorch专用 速度更快 显存消耗减半)
+4. 支持beam search
+git clone --recursive https://github.com/parlance/ctcdecode.git
+cd ctcdecode && pip install .
+1
+2
+注意事项:
+
+decoder方法有两种行为 greedy search和beam search
+greedy search可以看做是beam search的一种特殊情况
+这两种都是获得局部最优解的算法 而全局最优解通常使用维特比算法 而维特比算法再此处不适用 beam search可以看做是Viterbi算法的一种简化阉割版 在此不过多叙述
+三. 案例代码
+1. 数据准备
+目前支持 AN4(100M) TEDLIUM(30G) Voxforge(15G) LibriSpeech(100G) 四个数据集 并且写好了预处理文本
+
+1.1 AN4
+cd data
+python3 an4.py 
+1
+2
+自动下载数据集并创建 an4_train_manifest.csv文件 (wav和txt对应文件)
+
+1.2 Voxforge
+cd data
+python3 voxforge.py --target-dir DIR
+1
+2
+因为文件较大 DIR 选择自己存储数据集路径 (一开始没选默认是当前目录 给我的盘撑爆了差点)
+
+1.3 TEDLIUM
+cd data
+pthon3 ted.py
+1
+2
+1.4 LibriSpeech
+cd data/
+mkdir LibriSpeech/ # This can be anything as long as you specify the directory path as --target-dir when running the librispeech.py script
+mkdir LibriSpeech/val/
+mkdir LibriSpeech/test/
+mkdir LibriSpeech/train/
+cd data/
+python librispeech.py --files-to-use "train-clean-100.tar.gz, train-clean-360.tar.gz,train-other-500.tar.gz, dev-clean.tar.gz,dev-other.tar.gz, test-clean.tar.gz,test-other.tar.gz"
+1
+2
+3
+4
+5
+6
+7
+1.5 自定义数据集
+/path/to/audio.wav,/path/to/text.txt
+/path/to/audio2.wav,/path/to/text2.txt
+1
+2
+创建csv文件 包含wav和txt对应的文件
+
+2. 训练模型
+python3 train.py
+1
+– train-manifest #required=True 训练csv文件路径
+– val-manifest #required=True 测试csv文件路径
+– tensorboard --logdir # 可视化及l ogdir路径
+– cuda # 使用GPU训练
+– mixed-precision # 使用FP16半精度计算 需要apex
+– visdom # 另一种可视化
+– checkpoint # 是否在训练过程中设置保存点
+– checkpoint-per-batch # 设置保存点间隔 默认为0 表示不记录
+– epochs #默认70 迭代次数
+– batch-size # 设置batch-size 默认20
+– save-folder #设置保存每个epochs的模型路径
+– model-path #设置保存最好model的路径
+还有若干参数具体看 train.py 中的 parser 部分
+
+3. 训练结果
+1.1 an4
+在这里插入图片描述
+
+1.2 Voxforge
+跑了两个epochs的结果 简单谈一谈batch-size的影响
+在这里插入图片描述
+
+batch-size大小会影响训练速度 batch=128 跑一个epoch 1560s batch=32 跑一个epoch 1736s
+batch-size = 32 WER CER loss 同时正常降低
+batch-szie = 128 loss CER正常降低 但WER降低缓慢 在80左右不在降低
+4. TODO
+1.剩下两个数据集还没下完 回头跑完测试
+2.下一章进行各个模块代码部分详解
