@@ -1,0 +1,183 @@
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/devcloud/article/details/100039044
+文本转语音
+如果把Python比喻成游戏中的一个英雄，你觉得它是谁？对于Dota老玩家来说，我会想到钢琴手卡尔！感觉Python和卡尔一样，除了生孩子什么都可以做的角色。日常生活中，我们会涉及到很多语音播报的场景，比如郭德纲版的高德地图导航、超市门口的红外感知提醒欢迎光临、银行的自助叫号系统，等等…今天就和大家聊聊Python文本转语音，看看这些从青铜到王者的模块。
+
+青铜-pywin32
+通过pip install pywin32安装模块，pywin32是个万金油的模块，太多的场景使用到它，但在文本转语音上，它却是个青铜玩家，简单无脑但效果不好。代码示例：
+
+import win32com.client
+ 
+speaker = win32com.client.Dispatch("SAPI.SpVoice")
+speaker.Speak("一天什么时候最安全？中午，因为早晚会出事...")
+因为这个模块使用了很多次，自信执行，结果报错了….
+
+Traceback (most recent call last):
+File “D:\Python37\lib\site-packages\win32com\client\dynamic.py”, line 89, in _GetGoodDispatch
+IDispatch = pythoncom.connect(IDispatch)
+pywintypes.com_error: (-2147221005, ‘无效的类字符串’, None, None)
+
+这个模块之前在公司和家里笔记本用过很多次的，怎么会报错呢？一脸懵逼…结果查了半天发现，代码在调用语音识别组件的时候报错了。
+
+打开控制面板发现语音识别组件我的台式机电脑没有，原来现在很多GHOST版WIN系统为了精简体积都去除了语音识别组件，所以在安装语音朗读语音叫号类软件时，都不能正常发音。本来这种青铜小选手，像我这种王者级别的不羞于为伍，但既然是模块介绍还是确定下到底是不是这个问题吧。网上找了一个语音识别的TTSwidnows补丁包安装了一下，再次执行成功。如果跟我存在一样问题的选手，可以网上搜索安装一下。下载补丁包执行bat文件一键无脑安装。
+
+白银-pyttsx3
+pyttsx3 is a text-to-speech conversion library in Python.
+Unlike alternative libraries, it works offline, and is compatible with both Python 2 and 3.
+
+SAPI5 on Windows XP and Windows Vista and Windows 8,8.1 , 10
+
+NSSpeechSynthesizer on Mac OS X 10.5 (Leopard) and 10.6 (Snow Leopard)
+
+espeak on Ubuntu Desktop Edition 8.10 (Intrepid), 9.04 (Jaunty), and 9.10 (Karmic)
+
+pyttsx3使用pyttsx移植过来的,因为pyttsx不支持python3…针对不同的系统，模块会自动所有系统对应的语音驱动，前提是你的系统存在该驱动…
+它依赖pywin32模块，可以说它时针对无脑的pywin32接口，进行了升级的个性化配置。先来看下最简单的使用：
+
+import pyttsx3
+engine = pyttsx3.init()
+engine.say("明天你好，我叫干不倒！")
+engine.runAndWait()
+代码初始化模块后，填写你所需转化的文本，之后执行runAndWait方法完成语音转化。再来看看其相关操作：
+
+事件监听
+import pyttsx3
+ 
+def onStart(name):
+    print('starting', name)
+ 
+def onWord(name, location, length):
+    print('word', name, location, length)
+ 
+def onEnd(name, completed):
+    print('finishing', name, completed)
+ 
+engine = pyttsx3.init()
+engine.connect('started-utterance', onStart)
+engine.connect('started-word', onWord)
+engine.connect('finished-utterance', onEnd)
+engine.say('The quick brown fox jumped over the lazy dog.')
+engine.runAndWait()
+中断话语
+import pyttsx3
+def onWord(name, location, length):
+   print 'word', name, location, length
+   if location > 10:
+      engine.stop()
+engine = pyttsx3.init()
+engine.connect('started-word', onWord)
+engine.say('The quick brown fox jumped over the lazy dog.')
+engine.runAndWait()
+改变声音
+import pyttsx3
+engine = pyttsx3.init()
+voices = engine.getProperty('voices')
+for voice in voices:
+   engine.setProperty('voice', voice.id)
+   engine.say('The quick brown fox jumped over the lazy dog.')
+engine.runAndWait()
+改变语速
+import pyttsx3
+engine = pyttsx3.init()
+rate = engine.getProperty('rate')
+engine.setProperty('rate', rate+50)
+engine.say('The quick brown fox jumped over the lazy dog.')
+engine.runAndWait()
+改变音量
+import pyttsx3
+engine = pyttsx3.init()
+volume = engine.getProperty('volume')
+engine.setProperty('volume', volume-0.25)
+engine.say('The quick brown fox jumped over the lazy dog.')
+engine.runAndWait()
+运行驱动程序事件循环
+import pyttsx3
+engine = pyttsx3.init()
+def onStart(name):
+   print 'starting', name
+def onWord(name, location, length):
+   print 'word', name, location, length
+def onEnd(name, completed):
+   print 'finishing', name, completed
+   if name == 'fox':
+      engine.say('What a lazy dog!', 'dog')
+   elif name == 'dog':
+      engine.endLoop()
+engine = pyttsx3.init()
+engine.connect('started-utterance', onStart)
+engine.connect('started-word', onWord)
+engine.connect('finished-utterance', onEnd)
+engine.say('The quick brown fox jumped over the lazy dog.', 'fox')
+engine.startLoop()
+使用外部事件循环
+import pyttsx3
+engine = pyttsx3.init()
+engine.say('The quick brown fox jumped over the lazy dog.', 'fox')
+engine.startLoop(False)
+# engine.iterate() must be called inside externalLoop()
+externalLoop()
+engine.endLoop()
+王者-百度语音识别api
+百度语音识别api:baidu-aip是百度开放的公共语音转化服务。只需要在百度注册相关的app及秘钥信息即可使用。
+
+使用流程如下：
+
+访问语音合成-百度AI开放平台：http://ai.baidu.com/tech/speech/tts
+
+之后使用百度账号即可登陆(没有百度账号的，自己注册一个)
+
+创建应用，添加语音识别的功能，并完成注册
+
+保存你的app_id, API_Key, Secret_Key 三项数据留着后续使用
+
+切换回语音合成首页，点击立即使用旁边的技术文档按钮，进入API文档
+
+定位 语音合成—>SDK文档—>Python SDK，即可看到详细的开发文档说明
+
+
+
+接下来，我们看看文档中的相关说明：
+
+接口描述
+基于该接口，开发者可以轻松的获取语音合成能力
+
+请求说明
+合成文本长度必须小于1024字节，如果本文长度较长，可以采用多次请求的方式。文本长度不可超过限制
+举例，要把一段文字合成为语音文件：
+
+from aip import AipSpeech
+ 
+""" 你的 APPID AK SK """
+APP_ID = '你的 App ID'
+API_KEY = '你的 Api Key'
+SECRET_KEY = '你的 Secret Key'
+ 
+client = AipSpeech(APP_ID, API_KEY, SECRET_KEY)
+ 
+result  = client.synthesis('你好百度', 'zh', 1, {
+    'vol': 5,
+})
+ 
+# 识别正确返回语音二进制 错误则返回dict 参照下面错误码
+if not isinstance(result, dict):
+    with open('auido.mp3', 'wb') as f:
+        f.write(result)
+在上面代码中，常量APP_ID在百度云控制台中创建，常量API_KEY与SECRET_KEY是在创建完毕应用后，系统分配给用户的，均为字符串，用于标识用户，为访问做签名验证，可在AI服务控制台中的应用列表中查看。
+
+参数	类型	述描	是否必须
+text	String	合成的文本，使用UTF-8编码，请注意文本长度必须小于1024字节	   是
+cuid	String	用户唯一标识，用来区分用户，填写机器 MAC 地址或 IMEI 码，长度为60以内	   否
+speed	String	语速，取值0-9，默认为5中语速	   否
+pit	String	音调，取值0-9，默认为5中语调	   否
+vol	String	音量，取值0-15，默认为5中音量	   否
+per	String	发音人选择, 0为女声，1为男声，3为情感合成-度逍遥，4为情感合成-度丫丫，默认为普通女	   否
+相比于前两种模块，baidu-aip却是高端很多啊…喜欢的朋友可以下载了玩玩，感兴趣的朋友可以看看我之前发表的文章使用Python将任正非400+篇演讲批量转化为语音https://www.jianshu.com/p/05f9874b6989
+
+The End
+OK,今天的内容就到这里，如果觉得内容对你有所帮助，欢迎点击文章右下角的“在看”。
+期待你关注我的公众号清风Python，如果觉得不错，希望能动动手指转发给你身边的朋友们。
+
+作者：清风Python
+————————————————
+版权声明：本文为CSDN博主「华为云」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/devcloud/article/details/100039044
