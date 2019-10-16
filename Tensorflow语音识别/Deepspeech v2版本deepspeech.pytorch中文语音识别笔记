@@ -1,0 +1,38 @@
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/hw200855/article/details/89639304
+代码地址https://github.com/SeanNaren/deepspeech.pytorch
+
+中文语音数据库采用thchs30
+
+（1）首先提取data文件下的trn翻译文本，生成包含空格在内的生字表并保存为json格式lexicon.json，是汉字字典，不是拼音，我在这一步卡了很久，后来发现data_loader只能读取单个字符，所以中文识别的词汇表是翻译文本的汉字生字表
+
+（2）生成train.csv，dev.csv，test.csv路径文件,包含wav位置和对应的trn翻译文本位置
+
+（3）修改train.py中的这三个参数，分别是训练集，验证集和生字表
+
+'--train-manifest'
+'--val-manifest'
+'--labels-path'
+（4）data_loader.py读取翻译到的翻译文本是以空格对词进行区别，在实际训练中效果很差，loss值一直降不下来。参考deepspeech v1将翻译文本改为以字加空格的格式
+
+在165行读取翻译文本的时加入两行代码，得到单字+空格+单字.......格式翻译文本
+
+transcript=transcript.replace(' ','')
+transcript=''.join([f + ' ' for f in transcript])
+（5）进行训练，在30轮迭代后，验证集的wer降至5%左右，cer降至2.5%，在测试集的wer为50%，cer为25%
+
+对thchs30数据集进行分析，发现翻译文本只有1000句，其中训练集包含750句，测试集包含250句，验证集使用的句子与训练集重合，这也解释了为什么在验证集识别结果极好，在测试机集效果极差的原因。数据集样本不够多，训练时出现过拟合，这也是测试集结果不佳的原因。
+
+下面将改用aishell数据集对deepspeech v2进行进一步性能测试。
+
+thchs30生字表和路径生成文件代码
+
+链接：https://pan.baidu.com/s/1GUnsLbVweDrnZnmYdssMYg 
+提取码：y38d 
+
+ 
+
+有 0 个人打赏
+————————————————
+版权声明：本文为CSDN博主「hw200855」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/hw200855/article/details/89639304
