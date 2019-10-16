@@ -1,0 +1,134 @@
+原文链接：https://blog.csdn.net/cc1949/article/details/79163801
+
+公开课：爱丁堡大学asr课程 http://www.inf.ed.ac.uk/teaching/courses/asr/
+
+台大數位語音處理概論 http://ocw.aca.ntu.edu.tw/ntu-ocw/ocw/cou/104S204/1
+
+深度学习应用领域，可以分为3大块：图像，语音，文字。最近有时间，研究下语音：
+
+
+
+（一）定义
+
+语音是一个连续的音频流，它是由大部分的稳定态和部分动态改变的状态混合构成。
+一个单词的发声（波形）实际上取决于很多因素，而不仅仅是音素，例如音素上下文、说话者、语音风格等。
+
+
+
+（二）语音识别
+
+
+
+其中有个图（连续语音识别框架图）看不清楚，如下：
+
+
+
+
+
+（三）结果评定
+
+1、WER（Word error rate），单词错误率：我们有一个N个单词长度的原始文本和识别出来的文本。（对单词串进行识别难免有词的插入，替换和删除的误识）I代表被插入的单词个数，D代表被删除的单词个数，S代表被替换的单词个数，那么单词错误率就定义为：WER = (I + D + S) / N单词错误率一般通过百分百来表示。
+2、Accuracy，准确度。它和单词错误率大部分是相似的，但是它不计算插入单词的个数，它定义为：Accuracy = (N - D - S) / N，对于大部分任务来说，准确度事实上是一个比较差的度量方法，因为插入的情况对于识别结果的影响也是很重要的。但对于一些任务而言，准确度也是一个合理的评价解码器性能的参数。
+3、Speed，速度：假设音频文件是2个小时，而解码花费了6个小时，那么计算出来的速度就是3xRT。（3倍速）
+4、ROC curves，ROC曲线：对于一个检测任务，检测会出现误报和命中两种情况。ROC曲线就是用来评价检测性能的。ROC曲线就是描述误报和命中的数目比例的。而且可以通过ROC曲线取寻找一个最优点，在这个点误报最小，而命中最大，也就是接近100%的命中率。
+
+
+
+（四）尚未解决的难题
+
+1、口音和噪声
+语音识别中最明显的一个缺陷就是对口音和背景噪声的处理。
+2、语义错误
+通常语音识别系统的实际目标并不是误字率。我们更关心的是语义错误率，就是被误解的那部分话语。
+3、单通道和多人会话
+一个好的会话语音识别器必须能够根据谁在说话对音频进行划分，还应该能弄清重叠的会话（声源分离）。
+4、其他领域变化
+如：来自声环境变化的混响、硬件造成的伪影、音频的编解码器和压缩伪影、采样率的变化、会话者的年龄不同。
+5、上下文相关联判断识别
+人类聊天容易基于上下文做判断。机器目前很难做到。
+
+
+
+
+（五）现有的声学模型
+
+一般可分为：
+
+1、混合声学模型
+混合高斯-隐马尔科夫模型   GMM-HMM
+深度神经网络-隐马尔科夫模型   DNN-HMM
+深度循环神经网络-隐马尔科夫模型   RNN-HMM
+深度卷积神经网络-隐马尔科夫模型   CNN-HMM
+2、端到端的声学模型
+连接时序分类-长短时记忆模型 CTC-LSTM
+注意力模型 Attention
+
+
+
+（六）6篇入门论文
+
+介绍深度学习在语音识别领域应用的6篇入门论文：
+Deep neural networks for acoustic modeling in speech recognition: The shared views of four research groups 
+（2012年，Hinton，语音识别的突破）
+Speech recognition with deep recurrent neural networks 
+（2013年，RNN在语音识别的应用）
+Towards End-To-End Speech Recognition with Recurrent Neural Networks 
+（2014年）
+Fast and accurate recurrent neural network acoustic models for speech recognition 
+（2015年，Google）
+Deep speech 2: End-to-end speech recognition in english and mandarin 
+（2015年，Baidu）
+Achieving Human Parity in Conversational Speech Recognition 
+（2016年，Microsoft）
+尤其推荐第1，5，6篇
+
+
+（七）中文语音数据集
+
+1、gale_mandarin: 中文新闻广播数据集(LDC2013S08, LDC2013S08)
+
+2、hkust: 中文电话数据集(LDC2005S15, LDC2005T32)
+
+3、thchs30: 清华大学30小时的数据集，可以在http://www.openslr.org/18/下载
+
+
+
+（八）国际语音识别技术期刊
+
+1、Speech Communication
+2、Computer Speech and Language (CSL)
+3、IEEE Transactions on Speech and Audio Processing
+
+
+
+（九）开源代码（后续再对此模块做详细介绍）
+
+1、Kaldi
+
+Kaldi诞生于2009年的JohnsHopkins University，刚开始项目重点是子空间高斯模型（SGMM）建模和词汇学习抽样调查，代码也是基于HTK进行的开发，现在也是C++作为主要语言。
+2、CMU-Sphinx
+CMU-Sphinx是卡内基-梅隆大学（CarnegieMellon University，CMU）开发的一款开源的语音识别系统，后来Sun、三菱、惠普、加州大学圣克鲁斯分校和麻省理工也对其有所贡献。
+3、Julius
+Julius是日本京都大学和日本IPA(Information-tech-nologyPromotion Agency)联合开发的一个实用高效双通道的大词汇连续语音识别引擎。
+4、HTK
+HTK是Hidden Markov ModelToolkit（隐马尔科夫模型工具包）的简称，HTK主最初是由剑桥大学工程学院（Cambridge University Engineering Department ，CUED）的机器智能实验室于1989年开发的，它被用来构建CUED的大词汇量的语音识别系统。
+5、RWTH ASR
+RWTH ASR是一个包含语音识别解码器与工具的声学模型开发软件包，2001年由 RWTH Aachen 大学的Human Language Technology and Pattern Recognition Group 开发。
+
+这里主要推荐Kaldi，当然还有Tensorflow（后续重点讲）。
+
+
+
+（十）主要在线开发平台
+
+1、Nuance NVP
+2、Microsoft Speech API
+3、Google Speech API
+4、IBM viaVoice
+5、科大讯飞语音
+6、百度语音
+
+
+
+以上是一些零星笔记，比较混乱，随便看看就好。
+
