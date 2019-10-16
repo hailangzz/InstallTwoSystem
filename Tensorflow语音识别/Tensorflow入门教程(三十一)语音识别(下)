@@ -1,0 +1,978 @@
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/rookie_wei/article/details/84640258
+#
+#作者：韦访
+#博客：https://blog.csdn.net/rookie_wei
+#微信：1007895847
+#添加微信的备注一下是CSDN的
+#欢迎大家一起学习
+#
+
+------韦访 20181129
+
+13、Bi-RNN网络
+数据准备好了，接着就应该搭建网络了，我们这里使用Bi-RNN网络，前面的博客中没有介绍这个网络，所以现在先来介绍一下这个网络。
+
+Bi-RNN网络，又叫双向RNN网络，它采用了两个方向的RNN网络，如下图所示，
+
+
+
+RNN网络擅长处理连续的数据，所以将正反两个方向的网络结合，就不仅可以学习它的正向规律，还可以学习它的反向规律，这样就比单个循环网络拥有更高的拟合度。
+
+Bi-RNN跟RNN网络非常类似，只是在正向传播的基础上，再进行一次反向传播，且这两个都连接同一个输出层。
+
+14、CTC网络
+还得插讲一下其他内容，直接上代码的话会一脸懵逼。CTC（Connectionist Temporal Classification）是语音识别中的一个关键技术，通过增加一个额外的Symbol代表NULL来解决叠字的问题。
+
+在基于连续的时间序列分类任务中，常用CTC的方法。
+
+该方法主要体现在处理loss值上，通过对序列对不上的label添加blank（空）的方式，将预测的输出值与给定的label值在时间序列上对齐，再求出具体损失。
+
+15、CTC网络的loss
+CTC网络的loss在Tensorflow中封装成了ctc_loss函数，该函数的作用就是按照序列来处理输出标签和标注标签之间的损失。函数原型如下，
+
+ctc_loss(labels, inputs, sequence_length,
+             preprocess_collapse_repeated=False,
+             ctc_merge_repeated=True,
+             ignore_longer_outputs_than_inputs=False, time_major=True)
+
+其中，
+
+labels：是一个int32类型的稀疏矩阵张量(SparseTensor)。什么是稀疏矩阵等下再讲。
+
+inputs：经过RNN后输出的标签预测值，是三维的浮点型张量，如果time_major=True，则它的形状为[max_time,batch_size,num_classes]，否则为[batch_size,max_time,num_classes]。
+
+sequence_lenght：序列长度
+
+preprocess_collapse_repeated：是否需要预处理，将重复的label合并成一个label。
+
+ctc_merge_repeated：在计算时，是否将每个non_blank重复的label当成单独的label来解释。
+
+当取批次样本进行训练时，还需要对ctc_loss的返回值求均值，这个才是最终的loss。
+
+上面参数中，需要注意的是inputs参数中的num_classes，如果样本中有classes个分类，那么，num_classes=classes+1，即num_classes要比classes多出一个分类，用来存放blank类。在后面实现的代码中就知道这点了。
+
+16、稀疏矩阵
+稀疏矩阵是相对密集矩阵而言的，密集矩阵就是我们常见的矩阵，如果密集矩阵大部分数都是0，那么就没有必要浪费空间来存这些为0的数据，我们只要将那些不为0的索引、值和形状记录下来，就可以大大节省内存空间，这个就是稀疏矩阵。稀疏矩阵在Tensorflow中的结构如下，
+
+SparseTensor(indices, values, dense_shape)
+
+其中，
+
+indices：就是密集矩阵中不为0的数的索引。
+
+value：是一个list，存储的是密集矩阵中对应上面indices索引中的值。
+
+dense_shape：密集矩阵的形状。
+
+我们上一讲中的sparse_tuple_from函数返回的就是上面这三个参数的值。
+
+而Tensorflow中，将稀疏矩阵还原成密集矩阵的方法也很简单，使用sparse_tensor_to_dense函数即可。
+
+17、levenshtein距离
+Levenshtein距离，也叫编辑距离(Edit Distance)，指两个字符串之间，由一个转成另一个所需要的最少的编辑操作次数。编辑操作指的是，将一个字符替换成另一个字符、插入或者删除一个字符。编辑距离越小，说明两个字符串之间的相似度最大。
+
+在Tensorflow中，编辑距离的计算被封装成对两个稀疏矩阵的操作，函数原型如下，
+
+edit_distance(hypothesis, truth, normalize=True, name="edit_distance")
+
+其中，
+
+hypothesis:SparseTensor类型，为预测的序列结果。
+
+truth：SparseTensor类型，为真实的序列结果。
+
+normalize:求出来的编辑距离除以真实序列长度。
+
+name：名字
+
+返回值：R-1维的DenseTensor，包含每个序列的编辑距离。
+
+18、CTC decoder
+虽然输入ctc_loss中的inputs是我们的预测结果，但是这个结果却是带有空标签的（blank），而且是一个与时间序列强对应的输出。实际上我们需要的是一个转化好的，类似原始标注标签一个的输出。这时，我们可以使用CTC decoder，经过它对预测结果加工后，就可以与标准标签进行损失loss的运算了。
+
+Tensorflow中，CTC decoder有两个函数，如下所示，
+
+
+
+ 
+
+19、定义占位符
+现在可以开始搭建网络模型了，首先要定义占位符，
+
+# input_tensor为输入音频数据，由前面分析可知，它的结构是[batch_size, amax_stepsize, n_input + (2 * n_input * n_context)]
+#其中，batch_size是batch的长度，amax_stepsize是时序长度，n_input + (2 * n_input * n_context)是MFCC特征数，
+#batch_size是可变的，所以设为None，由于每一批次的时序长度不固定，所有，amax_stepsize也设为None
+input_tensor = tf.placeholder(tf.float32, [None, None, n_input + (2 * n_input * n_context)], name='input')
+# Use sparse_placeholder; will generate a SparseTensor, required by ctc_loss op.
+#targets保存的是音频数据对应的文本的系数张量，所以用sparse_placeholder创建一个稀疏张量
+targets = tf.sparse_placeholder(tf.int32, name='targets')
+#seq_length保存的是当前batch数据的时序长度
+seq_length = tf.placeholder(tf.int32, [None], name='seq_length')
+#keep_dropout则是dropout的参数
+keep_dropout= tf.placeholder(tf.float32)
+20、构建网络模型
+网络模型的话，先使用3个1024节点的全连接层网络，然后经过一个Bi-RNN网络，最后再连接两个全连接层，且都带有dropout层。激活函数的话，使用带截断的Relu，截断值设置为20。
+
+模型的shape变换有点多，我们输入的数据的结构是3维的，
+
+[batch_size, amax_stepsize, n_input + (2 * n_input * n_context)]
+
+我们要将它变成2维的，才能传入全连接层，
+
+[amax_stepsize * batch_size, n_input + 2 * n_input * n_context]
+
+全连接层到Bi-RNN网络时，又得转成3维的，
+
+[amax_stepsize, batch_size, 2*n_cell_dim]
+
+然后又得转成2维的，传入全连接层，
+
+[amax_stepsize * batch_size, 2 * n_cell_dim]
+
+最后，又得将2维的转成3维的输出，
+
+[amax_stepsize, batch_size, n_character]
+
+代码如下，
+
+def BiRNN_model(batch_x, seq_length, n_input, n_context, n_character, keep_dropout):
+    # batch_x_shape: [batch_size, amax_stepsize, n_input + 2 * n_input * n_context]
+    batch_x_shape = tf.shape(batch_x)
+ 
+    # 将输入转成时间序列优先
+    batch_x = tf.transpose(batch_x, [1, 0, 2])
+    # 再转成2维传入第一层
+    # [amax_stepsize * batch_size, n_input + 2 * n_input * n_context]
+    batch_x = tf.reshape(batch_x, [-1, n_input + 2 * n_input * n_context])
+ 
+    # 使用clipped RELU activation and dropout.
+    # 1st layer
+    with tf.name_scope('fc1'):
+        b1 = variable_on_cpu('b1', [n_hidden_1], tf.random_normal_initializer(stddev=b_stddev))
+        h1 = variable_on_cpu('h1', [n_input + 2 * n_input * n_context, n_hidden_1],
+                             tf.random_normal_initializer(stddev=h_stddev))
+        layer_1 = tf.minimum(tf.nn.relu(tf.add(tf.matmul(batch_x, h1), b1)), relu_clip)
+        layer_1 = tf.nn.dropout(layer_1, keep_dropout)
+ 
+    # 2nd layer
+    with tf.name_scope('fc2'):
+        b2 = variable_on_cpu('b2', [n_hidden_2], tf.random_normal_initializer(stddev=b_stddev))
+        h2 = variable_on_cpu('h2', [n_hidden_1, n_hidden_2], tf.random_normal_initializer(stddev=h_stddev))
+        layer_2 = tf.minimum(tf.nn.relu(tf.add(tf.matmul(layer_1, h2), b2)), relu_clip)
+        layer_2 = tf.nn.dropout(layer_2, keep_dropout)
+ 
+    # 3rd layer
+    with tf.name_scope('fc3'):
+        b3 = variable_on_cpu('b3', [n_hidden_3], tf.random_normal_initializer(stddev=b_stddev))
+        h3 = variable_on_cpu('h3', [n_hidden_2, n_hidden_3], tf.random_normal_initializer(stddev=h_stddev))
+        layer_3 = tf.minimum(tf.nn.relu(tf.add(tf.matmul(layer_2, h3), b3)), relu_clip)
+        layer_3 = tf.nn.dropout(layer_3, keep_dropout)
+ 
+    # 双向rnn
+    with tf.name_scope('lstm'):
+        # Forward direction cell:
+        lstm_fw_cell = tf.contrib.rnn.BasicLSTMCell(n_cell_dim, forget_bias=1.0, state_is_tuple=True)
+        lstm_fw_cell = tf.contrib.rnn.DropoutWrapper(lstm_fw_cell,
+                                                     input_keep_prob=keep_dropout)
+        # Backward direction cell:
+        lstm_bw_cell = tf.contrib.rnn.BasicLSTMCell(n_cell_dim, forget_bias=1.0, state_is_tuple=True)
+        lstm_bw_cell = tf.contrib.rnn.DropoutWrapper(lstm_bw_cell,
+                                                     input_keep_prob=keep_dropout)
+ 
+        # `layer_3`  `[amax_stepsize, batch_size, 2 * n_cell_dim]`
+        layer_3 = tf.reshape(layer_3, [-1, batch_x_shape[0], n_hidden_3])
+ 
+        outputs, output_states = tf.nn.bidirectional_dynamic_rnn(cell_fw=lstm_fw_cell,
+                                                                 cell_bw=lstm_bw_cell,
+                                                                 inputs=layer_3,
+                                                                 dtype=tf.float32,
+                                                                 time_major=True,
+                                                                 sequence_length=seq_length)
+ 
+        # 连接正反向结果[amax_stepsize, batch_size, 2 * n_cell_dim]
+        outputs = tf.concat(outputs, 2)
+        # to a single tensor of shape [amax_stepsize * batch_size, 2 * n_cell_dim]
+        outputs = tf.reshape(outputs, [-1, 2 * n_cell_dim])
+ 
+    with tf.name_scope('fc5'):
+        b5 = variable_on_cpu('b5', [n_hidden_5], tf.random_normal_initializer(stddev=b_stddev))
+        h5 = variable_on_cpu('h5', [(2 * n_cell_dim), n_hidden_5], tf.random_normal_initializer(stddev=h_stddev))
+        layer_5 = tf.minimum(tf.nn.relu(tf.add(tf.matmul(outputs, h5), b5)), relu_clip)
+        layer_5 = tf.nn.dropout(layer_5, keep_dropout)
+ 
+    with tf.name_scope('fc6'):
+        # 全连接层用于softmax分类
+        b6 = variable_on_cpu('b6', [n_character], tf.random_normal_initializer(stddev=b_stddev))
+        h6 = variable_on_cpu('h6', [n_hidden_5, n_character], tf.random_normal_initializer(stddev=h_stddev))
+        layer_6 = tf.add(tf.matmul(layer_5, h6), b6)
+ 
+    # 将2维[amax_stepsize * batch_size, n_character]转成3维 time-major [amax_stepsize, batch_size, n_character].
+    layer_6 = tf.reshape(layer_6, [-1, batch_x_shape[0], n_character])
+    print('n_character:' + str(n_character))
+    # Output shape: [amax_stepsize, batch_size, n_character]
+    return layer_6
+调用的话就很简单了，使用上面定义的占位符，
+
+logits = BiRNN_model( input_tensor, tf.to_int64(seq_length), n_input, n_context,words_size +1,keep_dropout)
+
+注意第5个参数，要加一，多一类来存放blank类。
+
+21、定义损失函数和优化器
+前面也说了，语音识别属于时序分类任务，要使用ctc_loss来计算损失。
+
+#使用ctc loss计算损失
+avg_loss = tf.reduce_mean(ctc_ops.ctc_loss(targets, logits, seq_length))
+
+而优化器还是使用梯度下降法AdamOptimizer，设置学习率为0.001 。
+
+#优化器
+learning_rate = 0.001
+optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(avg_loss)
+22、使用CTC decoder和计算编辑距离
+这里使用ctc_beam_search_decoder函数对预测结果进行解码，它返回值decoded是一个只有一个元素的数组，所以，使用edit_distance函数计算编辑距离时，我们应该传入的是decoded[0]。最后，对编辑距离取均值，求平均错误率，代码如下，
+
+#使用CTC decoder
+with tf.name_scope("decode"):    
+    decoded, log_prob = ctc_ops.ctc_beam_search_decoder( logits, seq_length, merge_repeated=False)
+    
+#计算编辑距离
+with tf.name_scope("accuracy"):
+    distance = tf.edit_distance( tf.cast(decoded[0], tf.int32), targets)
+    # 计算label error rate (accuracy)
+    ler = tf.reduce_mean(distance, name='label_error_rate')
+23、建立session
+#迭代次数
+epochs = 100
+#模型保存地址
+savedir = "saver/"
+#如果该目录不存在，新建
+if os.path.exists(savedir) == False:
+    os.mkdir(savedir)
+ 
+# 生成saver
+saver = tf.train.Saver(max_to_keep=1)
+# 创建session
+with tf.Session() as sess:
+    #初始化
+    sess.run(tf.global_variables_initializer())
+    # 没有模型的话，就重新初始化
+    kpt = tf.train.latest_checkpoint(savedir)
+    print("kpt:", kpt)
+    startepo = 0
+    if kpt != None:
+        saver.restore(sess, kpt)
+        ind = kpt.find("-")
+        startepo = int(kpt[ind + 1:])
+        print(startepo)
+ 
+    # 准备运行训练步骤
+    section = '\n{0:=^40}\n'
+    print(section.format('Run training epoch'))
+ 
+    train_start = time.time()
+    for epoch in range(epochs):  # 样本集迭代次数
+        epoch_start = time.time()
+        if epoch < startepo:
+            continue
+ 
+        print("epoch start:", epoch, "total epochs= ", epochs)
+        #######################run batch####
+        n_batches_per_epoch = int(np.ceil(len(labels) / batch_size))
+        print("total loop ", n_batches_per_epoch, "in one epoch，", batch_size, "items in one loop")
+ 
+        train_cost = 0
+        train_ler = 0
+        next_idx = 0
+ 
+        for batch in range(n_batches_per_epoch):  # 一次batch_size，取多少次
+            # 取数据
+            print('开始获取数据咯:' + str(batch))
+            next_idx, source, source_lengths, sparse_labels = next_batch(wav_files,labels,next_idx ,batch_size)
+            print('结束咯')
+            feed = {input_tensor: source, targets: sparse_labels, seq_length: source_lengths,
+                    keep_dropout: keep_dropout_rate}
+ 
+            # 计算 avg_loss optimizer ;
+            batch_cost, _ = sess.run([avg_loss, optimizer], feed_dict=feed)
+            train_cost += batch_cost
+            #验证模型的准确率，比较耗时，我们训练的时候全力以赴，所以这里先不跑
+            # if (batch + 1) % 20 == 0:
+            #     print('loop:', batch, 'Train cost: ', train_cost / (batch + 1))
+            #     feed2 = {input_tensor: source, targets: sparse_labels, seq_length: source_lengths, keep_dropout: 1.0}
+            #
+            #     d, train_ler = sess.run([decoded[0], ler], feed_dict=feed2)
+            #     dense_decoded = tf.sparse_tensor_to_dense(d, default_value=-1).eval(session=sess)
+            #     dense_labels = sparse_tuple_to_texts_ch(sparse_labels, words)
+            #
+            #     counter = 0
+            #     print('Label err rate: ', train_ler)
+            #     for orig, decoded_arr in zip(dense_labels, dense_decoded):
+            #         # convert to strings
+            #         decoded_str = ndarray_to_text_ch(decoded_arr, words)
+            #         print(' file {}'.format(counter))
+            #         print('Original: {}'.format(orig))
+            #         print('Decoded:  {}'.format(decoded_str))
+            #         counter = counter + 1
+            #         break
+ 
+            #每训练100次保存一下模型
+            if (batch + 1) % 100 == 0:
+                saver.save(sess, savedir + "saver.cpkt", global_step=epoch)
+        epoch_duration = time.time() - epoch_start
+ 
+        log = 'Epoch {}/{}, train_cost: {:.3f}, train_ler: {:.3f}, time: {:.2f} sec'
+        print(log.format(epoch, epochs, train_cost, train_ler, epoch_duration))
+ 
+ 
+    train_duration = time.time() - train_start
+    print('Training complete, total duration: {:.2f} min'.format(train_duration / 60))
+运行结果，
+
+
+
+ 如上图则表示开始训练。一天以后再来看看效果如何吧～
+
+24、完整代码
+老规矩，附上完整的代码，
+
+# encoding: utf-8
+#作者：韦访
+#csdn：https://blog.csdn.net/rookie_wei
+import numpy as np
+from python_speech_features import mfcc
+import scipy.io.wavfile as wav
+import os
+import time
+import tensorflow as tf
+from tensorflow.python.ops import ctc_ops
+from collections import Counter
+ 
+# 获取文件夹下所有的WAV文件
+def get_wav_files(wav_path):
+    wav_files = []
+    for (dirpath, dirnames, filenames) in os.walk(wav_path):
+        for filename in filenames:
+            if filename.endswith('.wav') or filename.endswith('.WAV'):
+                # print(filename)
+                filename_path = os.path.join(dirpath, filename)
+                # print(filename_path)
+                wav_files.append(filename_path)
+    return wav_files
+ 
+ 
+# 获取wav文件对应的翻译文字
+def get_tran_texts(wav_files, tran_path):
+    tran_texts = []
+    for wav_file in wav_files:
+        (wav_path, wav_filename) = os.path.split(wav_file)
+        tran_file = os.path.join(tran_path, wav_filename + '.trn')
+        # print(tran_file)
+        if os.path.exists(tran_file) is False:
+            return None
+ 
+        fd = open(tran_file, 'r')
+        text = fd.readline()
+        tran_texts.append(text.split('\n')[0])
+        fd.close()
+    return tran_texts
+ 
+ 
+# 获取wav和对应的翻译文字
+def get_wav_files_and_tran_texts(wav_path, tran_path):
+    wav_files = get_wav_files(wav_path)
+    tran_texts = get_tran_texts(wav_files, tran_path)
+ 
+    return wav_files, tran_texts
+ 
+ 
+# 旧的训练集使用该方法获取音频文件名和译文
+def get_wavs_lables(wav_path, label_file):
+    wav_files = []
+    for (dirpath, dirnames, filenames) in os.walk(wav_path):
+        for filename in filenames:
+            if filename.endswith('.wav') or filename.endswith('.WAV'):
+                filename_path = os.sep.join([dirpath, filename])
+                if os.stat(filename_path).st_size < 240000:  # 剔除掉一些小文件
+                    continue
+                wav_files.append(filename_path)
+ 
+    labels_dict = {}
+    with open(label_file, 'rb') as f:
+        for label in f:
+            label = label.strip(b'\n')
+            label_id = label.split(b' ', 1)[0]
+            label_text = label.split(b' ', 1)[1]
+            labels_dict[label_id.decode('ascii')] = label_text.decode('utf-8')
+ 
+    labels = []
+    new_wav_files = []
+    for wav_file in wav_files:
+        wav_id = os.path.basename(wav_file).split('.')[0]
+ 
+        if wav_id in labels_dict:
+            labels.append(labels_dict[wav_id])
+            new_wav_files.append(wav_file)
+ 
+    return new_wav_files, labels
+ 
+ 
+# Constants
+SPACE_TOKEN = '<space>'
+SPACE_INDEX = 0
+FIRST_INDEX = ord('a') - 1  # 0 is reserved to space
+ 
+ 
+# 将稀疏矩阵的字向量转成文字
+# tuple是sparse_tuple_from函数的返回值
+def sparse_tuple_to_texts_ch(tuple, words):
+    # 索引
+    indices = tuple[0]
+    # 字向量
+    values = tuple[1]
+    results = [''] * tuple[2][0]
+    for i in range(len(indices)):
+        index = indices[i][0]
+        c = values[i]
+        c = ' ' if c == SPACE_INDEX else words[c]
+        results[index] = results[index] + c
+ 
+    return results
+ 
+ 
+# 将密集矩阵的字向量转成文字
+def ndarray_to_text_ch(value, words):
+    results = ''
+    for i in range(len(value)):
+        results += words[value[i]]  # chr(value[i] + FIRST_INDEX)
+    return results.replace('`', ' ')
+ 
+ 
+# 创建序列的稀疏表示
+def sparse_tuple_from(sequences, dtype=np.int32):
+    indices = []
+    values = []
+ 
+    for n, seq in enumerate(sequences):
+        indices.extend(zip([n] * len(seq), range(len(seq))))
+        values.extend(seq)
+ 
+    indices = np.asarray(indices, dtype=np.int64)
+    values = np.asarray(values, dtype=dtype)
+    shape = np.asarray([len(sequences), indices.max(0)[1] + 1], dtype=np.int64)
+ 
+    # return tf.SparseTensor(indices=indices, values=values, shape=shape)
+    return indices, values, shape
+ 
+ 
+# 将音频数据转为时间序列（列）和MFCC（行）的矩阵，将对应的译文转成字向量
+def get_audio_and_transcriptch(txt_files, wav_files, n_input, n_context, word_num_map, txt_labels=None):
+    audio = []
+    audio_len = []
+    transcript = []
+    transcript_len = []
+    if txt_files != None:
+        txt_labels = txt_files
+ 
+    for txt_obj, wav_file in zip(txt_labels, wav_files):
+        # load audio and convert to features
+        audio_data = audiofile_to_input_vector(wav_file, n_input, n_context)
+        audio_data = audio_data.astype('float32')
+        # print(word_num_map)
+        audio.append(audio_data)
+        audio_len.append(np.int32(len(audio_data)))
+ 
+        # load text transcription and convert to numerical array
+        target = []
+        if txt_files != None:  # txt_obj是文件
+            target = get_ch_lable_v(txt_obj, word_num_map)
+        else:
+            target = get_ch_lable_v(None, word_num_map, txt_obj)  # txt_obj是labels
+        # target = text_to_char_array(target)
+        transcript.append(target)
+        transcript_len.append(len(target))
+ 
+    audio = np.asarray(audio)
+    audio_len = np.asarray(audio_len)
+    transcript = np.asarray(transcript)
+    transcript_len = np.asarray(transcript_len)
+    return audio, audio_len, transcript, transcript_len
+ 
+ 
+# 将字符转成向量，其实就是根据字找到字在word_num_map中所应对的下标
+def get_ch_lable_v(txt_file, word_num_map, txt_label=None):
+    words_size = len(word_num_map)
+ 
+    to_num = lambda word: word_num_map.get(word, words_size)
+ 
+    if txt_file != None:
+        txt_label = get_ch_lable(txt_file)
+ 
+    # print(txt_label)
+    labels_vector = list(map(to_num, txt_label))
+    # print(labels_vector)
+    return labels_vector
+ 
+ 
+def get_ch_lable(txt_file):
+    labels = ""
+    with open(txt_file, 'rb') as f:
+        for label in f:
+            # labels =label.decode('utf-8')
+            labels = labels + label.decode('gb2312')
+            # labels.append(label.decode('gb2312'))
+ 
+    return labels
+ 
+ 
+# 将音频信息转成MFCC特征
+# 参数说明---audio_filename：音频文件   numcep：梅尔倒谱系数个数
+#       numcontext：对于每个时间段，要包含的上下文样本个数
+def audiofile_to_input_vector(audio_filename, numcep, numcontext):
+    # 加载音频文件
+    fs, audio = wav.read(audio_filename)
+    # 获取MFCC系数
+    orig_inputs = mfcc(audio, samplerate=fs, numcep=numcep)
+    # 打印MFCC系数的形状，得到比如(955, 26)的形状
+    # 955表示时间序列，26表示每个序列的MFCC的特征值为26个
+    # 这个形状因文件而异，不同文件可能有不同长度的时间序列，但是，每个序列的特征值数量都是一样的
+    # print(np.shape(orig_inputs))
+ 
+    # 因为我们使用双向循环神经网络来训练,它的输出包含正、反向的结
+    # 果,相当于每一个时间序列都扩大了一倍,所以
+    # 为了保证总时序不变,使用orig_inputs =
+    # orig_inputs[::2]对orig_inputs每隔一行进行一次
+    # 取样。这样被忽略的那个序列可以用后文中反向
+    # RNN生成的输出来代替,维持了总的序列长度。
+    orig_inputs = orig_inputs[::2]  # (478, 26)
+    # print(np.shape(orig_inputs))
+    # 因为我们讲解和实际使用的numcontext=9，所以下面的备注我都以numcontext=9来讲解
+    # 这里装的就是我们要返回的数据，因为同时要考虑前9个和后9个时间序列，
+    # 所以每个时间序列组合了19*26=494个MFCC特征数
+    train_inputs = np.array([], np.float32)
+    train_inputs.resize((orig_inputs.shape[0], numcep + 2 * numcep * numcontext))
+    # print(np.shape(train_inputs))#)(478, 494)
+ 
+    # Prepare pre-fix post fix context
+    empty_mfcc = np.array([])
+    empty_mfcc.resize((numcep))
+ 
+    # Prepare train_inputs with past and future contexts
+    # time_slices保存的是时间切片，也就是有多少个时间序列
+    time_slices = range(train_inputs.shape[0])
+ 
+    # context_past_min和context_future_max用来计算哪些序列需要补零
+    context_past_min = time_slices[0] + numcontext
+    context_future_max = time_slices[-1] - numcontext
+ 
+    # 开始遍历所有序列
+    for time_slice in time_slices:
+        # 对前9个时间序列的MFCC特征补0，不需要补零的，则直接获取前9个时间序列的特征
+        need_empty_past = max(0, (context_past_min - time_slice))
+        empty_source_past = list(empty_mfcc for empty_slots in range(need_empty_past))
+        data_source_past = orig_inputs[max(0, time_slice - numcontext):time_slice]
+        assert (len(empty_source_past) + len(data_source_past) == numcontext)
+ 
+        # 对后9个时间序列的MFCC特征补0，不需要补零的，则直接获取后9个时间序列的特征
+        need_empty_future = max(0, (time_slice - context_future_max))
+        empty_source_future = list(empty_mfcc for empty_slots in range(need_empty_future))
+        data_source_future = orig_inputs[time_slice + 1:time_slice + numcontext + 1]
+        assert (len(empty_source_future) + len(data_source_future) == numcontext)
+ 
+        # 前9个时间序列的特征
+        if need_empty_past:
+            past = np.concatenate((empty_source_past, data_source_past))
+        else:
+            past = data_source_past
+ 
+        # 后9个时间序列的特征
+        if need_empty_future:
+            future = np.concatenate((data_source_future, empty_source_future))
+        else:
+            future = data_source_future
+ 
+        # 将前9个时间序列和当前时间序列以及后9个时间序列组合
+        past = np.reshape(past, numcontext * numcep)
+        now = orig_inputs[time_slice]
+        future = np.reshape(future, numcontext * numcep)
+ 
+        train_inputs[time_slice] = np.concatenate((past, now, future))
+        assert (len(train_inputs[time_slice]) == numcep + 2 * numcep * numcontext)
+ 
+    # 将数据使用正太分布标准化，减去均值然后再除以方差
+    train_inputs = (train_inputs - np.mean(train_inputs)) / np.std(train_inputs)
+ 
+    return train_inputs
+ 
+#对齐处理
+def pad_sequences(sequences, maxlen=None, dtype=np.float32,
+                  padding='post', truncating='post', value=0.):
+    #[478 512 503 406 481 509 422 465]
+    lengths = np.asarray([len(s) for s in sequences], dtype=np.int64)
+ 
+    nb_samples = len(sequences)
+ 
+    #maxlen，该批次中，最长的序列长度
+    if maxlen is None:
+        maxlen = np.max(lengths)
+ 
+    # 在下面的主循环中，从第一个非空序列中获取样本形状以检查一致性
+    sample_shape = tuple()
+    for s in sequences:
+        if len(s) > 0:
+            sample_shape = np.asarray(s).shape[1:]
+            break
+ 
+    x = (np.ones((nb_samples, maxlen) + sample_shape) * value).astype(dtype)
+    for idx, s in enumerate(sequences):
+        if len(s) == 0:
+            continue  # 序列为空，跳过
+ 
+        #post表示后补零，pre表示前补零
+        if truncating == 'pre':
+            trunc = s[-maxlen:]
+        elif truncating == 'post':
+            trunc = s[:maxlen]
+        else:
+            raise ValueError('Truncating type "%s" not understood' % truncating)
+ 
+        # check `trunc` has expected shape
+        trunc = np.asarray(trunc, dtype=dtype)
+        if trunc.shape[1:] != sample_shape:
+            raise ValueError('Shape of sample %s of sequence at position %s is different from expected shape %s' %
+                             (trunc.shape[1:], idx, sample_shape))
+ 
+        if padding == 'post':
+            x[idx, :len(trunc)] = trunc
+        elif padding == 'pre':
+            x[idx, -len(trunc):] = trunc
+        else:
+            raise ValueError('Padding type "%s" not understood' % padding)
+ 
+    return x, lengths
+ 
+ 
+wav_path='data_thchs30/train'
+label_file='data_thchs30/data'
+# wav_files, labels = get_wavs_lables(wav_path,label_file)
+wav_files, labels = get_wav_files_and_tran_texts(wav_path,label_file)
+ 
+ 
+# 字表
+all_words = []
+for label in labels:
+    #print(label)
+    all_words += [word for word in label]
+counter = Counter(all_words)
+words = sorted(counter)
+words_size= len(words)
+word_num_map = dict(zip(words, range(words_size)))
+ 
+print('字表大小:', words_size)
+ 
+# 梅尔倒谱系数的个数
+n_input = 26
+# 对于每个时间序列，要包含上下文样本的个数
+n_context = 9
+# batch大小
+batch_size = 8
+ 
+ 
+def next_batch(wav_files, labels, start_idx=0, batch_size=1):
+    filesize = len(labels)
+    # 计算要获取的序列的开始和结束下标
+    end_idx = min(filesize, start_idx + batch_size)
+    idx_list = range(start_idx, end_idx)
+    # 获取要训练的音频文件路径和对于的译文
+    txt_labels = [labels[i] for i in idx_list]
+    wav_files = [wav_files[i] for i in idx_list]
+    # 将音频文件转成要训练的数据
+    (source, audio_len, target, transcript_len) = get_audio_and_transcriptch(None,
+                                                                             wav_files,
+                                                                             n_input,
+                                                                             n_context, word_num_map, txt_labels)
+ 
+    start_idx += batch_size
+    # Verify that the start_idx is not largVerify that the start_idx is not ler than total available sample size
+    if start_idx >= filesize:
+        start_idx = -1
+ 
+    # Pad input to max_time_step of this batch
+    # 如果多个文件将长度统一，支持按最大截断或补0
+    source, source_lengths = pad_sequences(source)
+    # 返回序列的稀疏表示
+    sparse_labels = sparse_tuple_from(target)
+ 
+    return start_idx, source, source_lengths, sparse_labels
+ 
+ 
+print('音频文件:  ' + wav_files[0])
+print('文字内容:  ' + labels[0])
+# 获取一个batch的数据
+next_idx, source, source_len, sparse_lab = next_batch(wav_files, labels, 0, batch_size)
+print(np.shape(source))
+# 将字向量转成文字
+t = sparse_tuple_to_texts_ch(sparse_lab, words)
+print(t[0])
+# source已经将变为前9（不够补空）+本身+后9，每个26，第一个顺序是第10个的数据。
+ 
+ 
+ 
+b_stddev = 0.046875
+h_stddev = 0.046875
+ 
+n_hidden = 1024
+n_hidden_1 = 1024
+n_hidden_2 = 1024
+n_hidden_5 = 1024
+n_cell_dim = 1024
+n_hidden_3 = 2 * 1024
+ 
+keep_dropout_rate = 0.95
+relu_clip = 20
+ 
+"""
+used to create a variable in CPU memory.
+"""
+def variable_on_cpu(name, shape, initializer):
+    # Use the /cpu:0 device for scoped operations
+    with tf.device('/cpu:0'):
+        # Create or get apropos variable
+        var = tf.get_variable(name=name, shape=shape, initializer=initializer)
+    return var
+ 
+ 
+def BiRNN_model(batch_x, seq_length, n_input, n_context, n_character, keep_dropout):
+    # batch_x_shape: [batch_size, amax_stepsize, n_input + 2 * n_input * n_context]
+    batch_x_shape = tf.shape(batch_x)
+ 
+    # 将输入转成时间序列优先
+    batch_x = tf.transpose(batch_x, [1, 0, 2])
+    # 再转成2维传入第一层
+    # [amax_stepsize * batch_size, n_input + 2 * n_input * n_context]
+    batch_x = tf.reshape(batch_x, [-1, n_input + 2 * n_input * n_context])
+ 
+    # 使用clipped RELU activation and dropout.
+    # 1st layer
+    with tf.name_scope('fc1'):
+        b1 = variable_on_cpu('b1', [n_hidden_1], tf.random_normal_initializer(stddev=b_stddev))
+        h1 = variable_on_cpu('h1', [n_input + 2 * n_input * n_context, n_hidden_1],
+                             tf.random_normal_initializer(stddev=h_stddev))
+        layer_1 = tf.minimum(tf.nn.relu(tf.add(tf.matmul(batch_x, h1), b1)), relu_clip)
+        layer_1 = tf.nn.dropout(layer_1, keep_dropout)
+ 
+    # 2nd layer
+    with tf.name_scope('fc2'):
+        b2 = variable_on_cpu('b2', [n_hidden_2], tf.random_normal_initializer(stddev=b_stddev))
+        h2 = variable_on_cpu('h2', [n_hidden_1, n_hidden_2], tf.random_normal_initializer(stddev=h_stddev))
+        layer_2 = tf.minimum(tf.nn.relu(tf.add(tf.matmul(layer_1, h2), b2)), relu_clip)
+        layer_2 = tf.nn.dropout(layer_2, keep_dropout)
+ 
+    # 3rd layer
+    with tf.name_scope('fc3'):
+        b3 = variable_on_cpu('b3', [n_hidden_3], tf.random_normal_initializer(stddev=b_stddev))
+        h3 = variable_on_cpu('h3', [n_hidden_2, n_hidden_3], tf.random_normal_initializer(stddev=h_stddev))
+        layer_3 = tf.minimum(tf.nn.relu(tf.add(tf.matmul(layer_2, h3), b3)), relu_clip)
+        layer_3 = tf.nn.dropout(layer_3, keep_dropout)
+ 
+    # 双向rnn
+    with tf.name_scope('lstm'):
+        # Forward direction cell:
+        lstm_fw_cell = tf.contrib.rnn.BasicLSTMCell(n_cell_dim, forget_bias=1.0, state_is_tuple=True)
+        lstm_fw_cell = tf.contrib.rnn.DropoutWrapper(lstm_fw_cell,
+                                                     input_keep_prob=keep_dropout)
+        # Backward direction cell:
+        lstm_bw_cell = tf.contrib.rnn.BasicLSTMCell(n_cell_dim, forget_bias=1.0, state_is_tuple=True)
+        lstm_bw_cell = tf.contrib.rnn.DropoutWrapper(lstm_bw_cell,
+                                                     input_keep_prob=keep_dropout)
+ 
+        # `layer_3`  `[amax_stepsize, batch_size, 2 * n_cell_dim]`
+        layer_3 = tf.reshape(layer_3, [-1, batch_x_shape[0], n_hidden_3])
+ 
+        outputs, output_states = tf.nn.bidirectional_dynamic_rnn(cell_fw=lstm_fw_cell,
+                                                                 cell_bw=lstm_bw_cell,
+                                                                 inputs=layer_3,
+                                                                 dtype=tf.float32,
+                                                                 time_major=True,
+                                                                 sequence_length=seq_length)
+ 
+        # 连接正反向结果[amax_stepsize, batch_size, 2 * n_cell_dim]
+        outputs = tf.concat(outputs, 2)
+        # to a single tensor of shape [amax_stepsize * batch_size, 2 * n_cell_dim]
+        outputs = tf.reshape(outputs, [-1, 2 * n_cell_dim])
+ 
+    with tf.name_scope('fc5'):
+        b5 = variable_on_cpu('b5', [n_hidden_5], tf.random_normal_initializer(stddev=b_stddev))
+        h5 = variable_on_cpu('h5', [(2 * n_cell_dim), n_hidden_5], tf.random_normal_initializer(stddev=h_stddev))
+        layer_5 = tf.minimum(tf.nn.relu(tf.add(tf.matmul(outputs, h5), b5)), relu_clip)
+        layer_5 = tf.nn.dropout(layer_5, keep_dropout)
+ 
+    with tf.name_scope('fc6'):
+        # 全连接层用于softmax分类
+        b6 = variable_on_cpu('b6', [n_character], tf.random_normal_initializer(stddev=b_stddev))
+        h6 = variable_on_cpu('h6', [n_hidden_5, n_character], tf.random_normal_initializer(stddev=h_stddev))
+        layer_6 = tf.add(tf.matmul(layer_5, h6), b6)
+ 
+    # 将2维[amax_stepsize * batch_size, n_character]转成3维 time-major [amax_stepsize, batch_size, n_character].
+    layer_6 = tf.reshape(layer_6, [-1, batch_x_shape[0], n_character])
+    print('n_character:' + str(n_character))
+    # Output shape: [amax_stepsize, batch_size, n_character]
+    return layer_6
+ 
+# input_tensor为输入音频数据，由前面分析可知，它的结构是[batch_size, amax_stepsize, n_input + (2 * n_input * n_context)]
+#其中，batch_size是batch的长度，amax_stepsize是时序长度，n_input + (2 * n_input * n_context)是MFCC特征数，
+#batch_size是可变的，所以设为None，由于每一批次的时序长度不固定，所有，amax_stepsize也设为None
+input_tensor = tf.placeholder(tf.float32, [None, None, n_input + (2 * n_input * n_context)], name='input')
+# Use sparse_placeholder; will generate a SparseTensor, required by ctc_loss op.
+#targets保存的是音频数据对应的文本的系数张量，所以用sparse_placeholder创建一个稀疏张量
+targets = tf.sparse_placeholder(tf.int32, name='targets')
+#seq_length保存的是当前batch数据的时序长度
+seq_length = tf.placeholder(tf.int32, [None], name='seq_length')
+#keep_dropout则是dropout的参数
+keep_dropout= tf.placeholder(tf.float32)
+ 
+# logits is the non-normalized output/activations from the last layer.
+# logits will be input for the loss function.
+# nn_model is from the import statement in the load_model function
+logits = BiRNN_model(input_tensor, tf.to_int64(seq_length), n_input, n_context, words_size + 1, keep_dropout)
+ 
+# 使用ctc loss计算损失
+avg_loss = tf.reduce_mean(ctc_ops.ctc_loss(targets, logits, seq_length))
+ 
+# 优化器
+learning_rate = 0.001
+optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(avg_loss)
+ 
+# 使用CTC decoder
+with tf.name_scope("decode"):
+    decoded, log_prob = ctc_ops.ctc_beam_search_decoder(logits, seq_length, merge_repeated=False)
+ 
+# 计算编辑距离
+with tf.name_scope("accuracy"):
+    distance = tf.edit_distance(tf.cast(decoded[0], tf.int32), targets)
+    # 计算label error rate (accuracy)
+    ler = tf.reduce_mean(distance, name='label_error_rate')
+ 
+#迭代次数
+epochs = 100
+#模型保存地址
+savedir = "saver/"
+#如果该目录不存在，新建
+if os.path.exists(savedir) == False:
+    os.mkdir(savedir)
+ 
+# 生成saver
+saver = tf.train.Saver(max_to_keep=1)
+# 创建session
+with tf.Session() as sess:
+    #初始化
+    sess.run(tf.global_variables_initializer())
+    # 没有模型的话，就重新初始化
+    kpt = tf.train.latest_checkpoint(savedir)
+    print("kpt:", kpt)
+    startepo = 0
+    if kpt != None:
+        saver.restore(sess, kpt)
+        ind = kpt.find("-")
+        startepo = int(kpt[ind + 1:])
+        print(startepo)
+ 
+    # 准备运行训练步骤
+    section = '\n{0:=^40}\n'
+    print(section.format('Run training epoch'))
+ 
+    train_start = time.time()
+    for epoch in range(epochs):  # 样本集迭代次数
+        epoch_start = time.time()
+        if epoch < startepo:
+            continue
+ 
+        print("epoch start:", epoch, "total epochs= ", epochs)
+        #######################run batch####
+        n_batches_per_epoch = int(np.ceil(len(labels) / batch_size))
+        print("total loop ", n_batches_per_epoch, "in one epoch，", batch_size, "items in one loop")
+ 
+        train_cost = 0
+        train_ler = 0
+        next_idx = 0
+ 
+        for batch in range(n_batches_per_epoch):  # 一次batch_size，取多少次
+            # 取数据
+            print('开始获取数据咯:' + str(batch))
+            next_idx, source, source_lengths, sparse_labels = next_batch(wav_files,labels,next_idx ,batch_size)
+            print('结束咯')
+            feed = {input_tensor: source, targets: sparse_labels, seq_length: source_lengths,
+                    keep_dropout: keep_dropout_rate}
+ 
+            # 计算 avg_loss optimizer ;
+            batch_cost, _ = sess.run([avg_loss, optimizer], feed_dict=feed)
+            train_cost += batch_cost
+            #验证模型的准确率，比较耗时，我们训练的时候全力以赴，所以这里先不跑
+            # if (batch + 1) % 20 == 0:
+            #     print('loop:', batch, 'Train cost: ', train_cost / (batch + 1))
+            #     feed2 = {input_tensor: source, targets: sparse_labels, seq_length: source_lengths, keep_dropout: 1.0}
+            #
+            #     d, train_ler = sess.run([decoded[0], ler], feed_dict=feed2)
+            #     dense_decoded = tf.sparse_tensor_to_dense(d, default_value=-1).eval(session=sess)
+            #     dense_labels = sparse_tuple_to_texts_ch(sparse_labels, words)
+            #
+            #     counter = 0
+            #     print('Label err rate: ', train_ler)
+            #     for orig, decoded_arr in zip(dense_labels, dense_decoded):
+            #         # convert to strings
+            #         decoded_str = ndarray_to_text_ch(decoded_arr, words)
+            #         print(' file {}'.format(counter))
+            #         print('Original: {}'.format(orig))
+            #         print('Decoded:  {}'.format(decoded_str))
+            #         counter = counter + 1
+            #         break
+ 
+            #每训练100次保存一下模型
+            if (batch + 1) % 100 == 0:
+                saver.save(sess, savedir + "saver.cpkt", global_step=epoch)
+        epoch_duration = time.time() - epoch_start
+ 
+        log = 'Epoch {}/{}, train_cost: {:.3f}, train_ler: {:.3f}, time: {:.2f} sec'
+        print(log.format(epoch, epochs, train_cost, train_ler, epoch_duration))
+ 
+ 
+    train_duration = time.time() - train_start
+    print('Training complete, total duration: {:.2f} min'.format(train_duration / 60))
+该例子出自：
+
+http://www.svds.com/tensorflow-rnn-tutorial/
+
+遗憾的是github上已经找不到该例子了。
+
+参考博客：
+
+https://baijiahao.baidu.com/s?id=1582967895751684638&wfr=spider&for=pc
+
+《深度学习之TensorFlow》----李金洪
+
+-----------------------------------------------补充---------------------------------------------------------
+
+20181102
+
+训练了两天两夜，贴上训练结果，
+
+
+
+ 可以看到，准确率还是可以了，但是，句子后面怎么有一堆的“龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚龚”呢？？先留下疑问，后续找到问题我们再更新博客。
+
+ 
+
+我将训练好的模型上传了，
+
+模型下载地址
+
+https://download.csdn.net/download/rookie_wei/10864326
+
+ 
+
+想知道训练好的模型怎么用的，看下面的博客，
+
+https://blog.csdn.net/rookie_wei/article/details/89721441
+————————————————
+版权声明：本文为CSDN博主「rookie_wei」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/rookie_wei/article/details/84640258
