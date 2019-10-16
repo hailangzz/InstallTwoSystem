@@ -1,0 +1,92 @@
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/qq_30490125/article/details/79783823
+1. prepare
+根据百度开发文档的提示可以知道，API仅能处理特定格式的语音文件。
+
+由于底层识别使用的是pcm，因此推荐直接上传pcm文件。如果上传其它格式，会在服务器端转码成pcm，调用接口的耗时会增加。
+
+语音识别仅支持以下格式 ：pcm（不压缩）、wav（不压缩，pcm编码）、amr（有损压缩格式）；8k/16k 采样率 16bit 位深的单声道。即：
+
+pcm wav amr 格式三选一。 正常情况请使用pcm。其中wav格式需要使用pcm编码。 
+采用率二选一 8000 或者 16000。正常情况请使用16000 
+单声道
+
+这就以为着需要对语音文件进行解码，修改，重新编码。 
+特别的，如果我希望能够提供视屏的字幕，就需要对音屏文件进行提取，然后进行语音识别。
+
+ffmpeg
+简介
+FFmpeg是一套可以用来记录、转换数字音频、视频，并能将其转化为流的开源计算机程序。采用LGPL或GPL许可证。它提供了录制、转换以及流化音视频的完整解决方案。
+
+需要注意一点：因为FFmpeg默认只支持mp3的解码，不支持mp3编码。如果想把提取出来的音频保存为mp3格式肯定就需要mp3格式的编码库。因此，想输出mp3文件，需要借助第三方的mp3编码库。这里采用LAME编码库，即Lame Aint an MP3 Encoder(A high quality MP3 encoder).
+
+Ubuntu安装的比较简单粗暴：
+
+sudo apt-get install lame
+sudo apt-get install ffmpeg
+1
+2
+使用
+输入音频参数 
+wav amr 与mp3格式都自带头部， 含有采样率 编码 多声道等信息。而pcm为原始音频信息，没有类似头部。 wav（pcm编码）格式，仅仅在同样参数的pcm文件加了个几百k的文件头。
+
+输入 wav amr 及mp3格式：
+
+-i  test.wav # 或test.mp3 或者 test.amr
+1
+输入 pcm格式： pcm需要额外告知编码格式，采样率，单声道信息，-f fmt 强迫采用格式fmt，-ac 2（声道数1或2），-ar （声音的采样频率），s16le （PCM signed 16-bit little-endian）
+
+-f s16le -ac 1 -ar 16000 -i 8k.pcm
+1
+单声道 16000 采样率 16bits编码 pcm文件
+
+输出音频参数 
+在原始采样率 大于或者接近16000的时候，推荐使用16000的采样率。 8000的采样率会降低识别效果。 输出wav和amr格式时，如果不指定输出编码器的haunt，ffmpeg会选取默认编码器。
+
+输出pcm音频
+
+-f s16le -ac 1 -ar 16000 16k.pcm  
+1
+单声道 16000 采样率 16bits编码 pcm文件 
+输出wav 音频：
+
+-ac 1 -ar 16000 16k.wav 
+1
+单声道 16000 采样率的wav文件。
+
+what a wav looks like?
+# -*- coding: utf-8 -*-
+import wave
+import pylab as pl
+import numpy as np
+
+# 打开WAV文档
+#‘rb’，读取文件；
+#‘wb’，写入文件;
+f = wave.open(r"/home/vedio/test.wav", "rb")
+
+# 读取格式信息
+# (nchannels, sampwidth, framerate, nframes, comptype, compname)
+params = f.getparams()
+nchannels, sampwidth, framerate, nframes = params[:4]
+
+# 读取波形数据
+str_data = f.readframes(nframes)
+f.close()
+
+#将波形数据转换为数组
+wave_data = np.fromstring(str_data, dtype=np.short)
+wave_data.shape = -1, 2
+wave_data = wave_data.T
+time = np.arange(0, nframes) * (1.0 / framerate)
+
+# 绘制波形
+pl.subplot(211) 
+pl.plot(time, wave_data[0])
+pl.subplot(212) 
+pl.plot(time, wave_data[1], c="g")
+pl.xlabel("time (seconds)")
+pl.show()
+
+版权声明：本文为CSDN博主「Feng某人」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/qq_30490125/article/details/79783823
