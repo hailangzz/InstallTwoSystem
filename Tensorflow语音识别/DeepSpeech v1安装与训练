@@ -1,0 +1,113 @@
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/hw200855/article/details/88218700
+1 安装git-lfs
+
+curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.rpm.sh | sudo bash
+sudo apt-get install git-lfs
+这一步不能漏了，不安装这一步后面git clone获取的deepspeech代码没有相应的语言模型。会出现如下的错误：
+
+Loading the LM will be faster if you build a binary file.
+Reading data/lm/lm.binary
+----5---10---15---20---25---30---35---40---45---50---55---60---65---70---75---80---85---90---95--100
+terminate called after throwing an instance of 'lm::FormatLoadException'
+  what():  native_client/kenlm/lm/read_arpa.cc:65 in void lm::ReadARPACounts(util::FilePiece&, std::vector<long unsigned int>&) threw FormatLoadException.
+first non-empty line was "version https://git-lfs.github.com/spec/v1" not \data\. Byte: 43
+Aborted (core dumped)
+2   获取代码
+
+git clone https://github.com/mozilla/DeepSpeech
+
+
+3 创建DeepSpeech虚拟环境
+
+在创建虚拟环境时，你将创建包含 python3 二进制文件的目录以及运行deepspeech所需。 你可以使用任何你想要的目录。 出于文档的目的，我们将依赖 $HOME/tmp/deepspeech-venv。 你可以使用以下命令创建它：
+
+$ virtualenv -p python3 $HOME/tmp/deepspeech-venv/
+成功完成这里命令后，环境将准备就绪，可以激活。
+
+每次需要使用DeepSpeech时，都必须激活 activate 负载这个虚拟环境。 这是用这个简单的命令完成的：
+
+$ source $HOME/tmp/deepspeech-venv/bin/activate
+注意，没在虚拟环境下运行会出现错误
+
+4 安装 DeepSpeech python-绑定
+
+设置并加载环境后，可以使用 pip3 在本地管理包。 重新安装 virtualenv 时，你必须安装DeepSpeech轮。 你可以查看 pip3 list的输出来检查它是否已经安装。 要执行安装，只需发出以下命令：
+
+$ pip3 install deepspeech
+
+
+如果已经安装，你还可以更新它：
+
+$ pip3 install --upgrade deepspeech
+另外，如果你在 Linux (查看发行说明以查找支持哪些 GPU) 上拥有支持的NVIDIA GPU，则可以按如下方式安装GPU特定软件包：
+
+$ pip3 install deepspeech-gpu
+或者按如下方式更新它：
+
+$ pip3 install --upgrade deepspeech-gpu
+在这两种情况下，它都应该负责安装所有必需的依赖项。 完成后，你就可以在命令行中使用 deepspeech 调用示例二进制文件了。注意：以下命令假设你已经下载了预训练过的模型。
+
+deepspeech --model models/output_graph.pbmm --alphabet models/alphabet.txt --lm models/lm.binary --trie models/trie --audio my_audio_file.wav
+ 下载训练好的模型
+
+wget https://github.com/mozilla/DeepSpeech/releases/download/v0.4.1/deepspeech-0.4.1-models.tar.gz
+tar xvfz deepspeech-0.4.1-models.tar.gz
+5 使用pip安装所需的依赖项：
+
+cd DeepSpeech
+pip3 install -r requirements.txt
+您还需要安装ds_ctcdecoder Python软件包，该软件包是将声学模型的输出解码为文本所必需的包。 我们的CI基础结构中提供了二进制文件，您可以使用util / taskcluster.py来获取解码器包的URL。 当您传递decoder选项时，脚本会将URL打印到适用于您的平台和Python版本的相应解码器包：
+
+pip3 install $(python3 util/taskcluster.py --decoder)
+如果你有能力的( Nvidia，至少 8GB的硬盘) GPU，强烈建议你安装TensorFlow支持GPU支持。 培训可能比使用CPU要快得多。 要启用GPU支持，你可以执行以下操作：
+
+pip3 uninstall tensorflow
+pip3 install 'tensorflow-gpu==1.12.0'
+6 运行训练代码
+
+bash ./bin/run-ldc93s1.sh
+为后文的测试训练一个pb模型，需要对run-ldc93s1.sh做出一定的的修改，在原文后加一行代码，设置pb模型保存文件夹，--export_dir /root/DeepSpeech/data/ldc93s1，得到output_graph.pb
+
+Downloading and preprocessing LDC93S1 example data, saving in ./data/ldc93s1.
++ python3 -u bin/import_ldc93s1.py ./data/ldc93s1
+No path "./data/ldc93s1" - creating ...
+No archive "./data/ldc93s1/LDC93S1.wav" - downloading...
+Progress |                                                                                                                                                                                                                      | N/A% completedNo archive "./data/ldc93s1/LDC93S1.txt" - downloading...
+Progress |######################################################################################################################################################################################################################| 100% completed
+Progress |######################################################################################################################################################################################################################| 100% completed
++ '[' -d '' ']'
+++ python3 -c 'from xdg import BaseDirectory as xdg; print(xdg.save_data_path("deepspeech/ldc93s1"))'
++ checkpoint_dir=/root/.local/share/deepspeech/ldc93s1
++ python3 -u DeepSpeech.py --train_files data/ldc93s1/ldc93s1.csv --dev_files data/ldc93s1/ldc93s1.csv --test_files data/ldc93s1/ldc93s1.csv --train_batch_size 1 --dev_batch_size 1 --test_batch_size 1 --n_hidden 494 --epoch 75 --export_dir lmmodel --checkpoint_dir /root/.local/share/deepspeech/ldc93s1 --export_dir /tmp/train
+Preprocessing ['data/ldc93s1/ldc93s1.csv']
+Preprocessing done
+Preprocessing ['data/ldc93s1/ldc93s1.csv']
+Preprocessing done
+W Parameter --validation_step needs to be >0 for early stopping to work
+I STARTING Optimization
+I Training epoch 0...
+I Training of Epoch 0 - loss: 350.212463                                                                                                                                                                                                        
+100% (1 of 1) |###########################################################################################################################################################################################| Elapsed Time: 0:00:00 Time:  0:00:00
+I Training epoch 1...
+I Training of Epoch 1 - loss: 185.314514                                                                                                                                                                                                        
+100% (1 of 1) 
+......
+|###########################################################################################################################################################################################| Elapsed Time: 0:00:00 Time:  0:00:00
+Test - WER: 0.000000, CER: 0.000000, loss: 2.879311
+--------------------------------------------------------------------------------
+WER: 0.000000, CER: 0.000000, loss: 2.879311
+ - src: "she had your dark suit in greasy wash water all year"
+ - res: "she had your dark suit in greasy wash water all year"
+--------------------------------------------------------------------------------
+I Exporting the model...
+I Models exported at /tmp/train
+7 测试模型
+
+deepspeech --model data/ldc93s1/output_graph.pb --audio data/ldc93s1/LDC93S1.wav --alphabet data/alphabet.txt --lm data/lm/lm.binary --trie data/lm/trie
+
+
+有 0 个人打赏
+————————————————
+版权声明：本文为CSDN博主「hw200855」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/hw200855/article/details/88218700
