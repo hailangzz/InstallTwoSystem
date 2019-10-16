@@ -1,0 +1,54 @@
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/sparkexpert/article/details/81217576
+DeepSpeech是国内百度推出的语音识别框架，目前已经出来第三版了。不过目前网上公开的代码都还是属于第二版的。
+
+1、Deepspeech各个版本演进
+
+(1) DeepSpeech V1
+
+其中百度研究团队于2014年底发布了第一代深度语音识别系统 Deep Speech 的研究论文，系统采用了端对端的深度学习技术，也就是说，系统不需要人工设计组件对噪声、混响或扬声器波动进行建模，而是直接从语料中进行学习。团队采用 7000 小时的干净语音语料，通过添加人工噪音的方法生成 10 万小时的合成语音语料，并在 SWITCHBOARD评测语料上获得了 16.5% 的 WER（词错误率，是一项语音识别的通用评估标准）。当时的实验显示，百度的语音识别效果比起谷歌、Bing 与 Apple API 而言优势明显。
+
+(2) DeepSpeech V2
+
+ 2015 年年底，百度 SVAIL 推出了Deep Speech 2，它基于 LSTM-CTC （Connectionist Temporal Classification）的端对端语音识别技术，通过将机器学习领域的 LSTM 建模与 CTC 训练引入传统的语音识别框架里，提出了具有创新性的汉字语音识别方法。并能够通过深度学习网络识别嘈杂环境下的两种完全不同的语言——英语与普通话，而端到端的学习能够使系统处理各种条件下的语音，包括嘈杂环境、口音及区别不同语种。而在 Deep Speech 2 中，百度应用了 HPC 技术识别缩短了训练时间，使得以往在几个星期才能完成的实验只需要几天就能完成。在基准测试时，系统能够呈现与人类具有竞争力的结果。
+
+(3) DeepSpeech V3
+
+2017年10月31日，百度的硅谷AI实验室发布了Deep Speech 3，这是下一代的语音识别模型，它进一步简化了模型，并且可以在使用预训练过的语言模型时继续进行端到端训练。并开发了Cold Fusion，它可以在训练Seq2Seq模型的时候使用一个预训练的语言模型。百度在论文中表明，带有Cold Fusion的Seq2Seq模型可以更好地运用语言信息，带来了更好的泛化效果和更快的收敛，同时只需用不到10%的标注训练数据就可以完全迁移到一个新领域。Cold Fusion还可以在测试过程中切换不同的语言模型以便为任何内容优化。Cold Fusion能够用在Seq2Seq模型上的同时，它在RNN变换器上应当也能发挥出同样好的效果。
+
+2、DeepspeechV2原理
+
+如下图所示为其论文的海报版本。
+
+
+
+其主要的模型框架如下：
+
+
+
+ 
+
+3、Deepspeech V2源码实践
+
+这个第二版的DeepSpeech已经有多种实现版本。本文选用了https://github.com/mozilla/DeepSpeech的代码来进行复现。
+
+(1) 要执行该代码，首先需要下载对应的C编译的包，主要包括ctc_decoder等。
+
+
+
+ (2) 对LibriSpeech中的任一一条语音进行测试，发现准确率非常高。
+
+
+
+(3) 选用网上的任意一个长文本英文句子进行实验。句子较长，发现效果也还算不错。
+
+语音和文本见：http://www.tingroom.com/lesson/nce1/197.html
+
+转写文字如下：i love twentedfomhemnetltmothlivrnmooleleontetrubepidmanontoequaseton ereafe book it i i latino is oh there he peradition in the moon the treeciion is near the we do there to micevineon the talrevitionferete le in the ron veriwhillyerpaple on the cave there is a pot trade in the room i am tree on me at the table there is a trio in the room the fare it near the door thereaefheebook an tara forahfotocktu in the room the picture a 
+
+
+
+有 0 个人打赏
+————————————————
+版权声明：本文为CSDN博主「sparkexpert」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/sparkexpert/article/details/81217576
