@@ -1,0 +1,121 @@
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/chadian3912/article/details/81077537
+以下内容均来自微信公众号：万能搜吧，关注获取更多干货分享。
+
+ 
+
+都是copy的百度SDK文档，简单说说怎么用。
+
+1、没安装Python的参见此文：Python学习笔记系列 1 ——安装调试Python开发软件
+
+2、win+r输入cmd打开命令行，输入：pip install baidu-aip，如下安装百度AI的模块。
+
+
+
+ 
+
+3、新建文本文档，copy如下代码，然后另存为py后缀的文档即可，小编的命名为：test.py。
+
+from aip import AipSpeech
+ 
+""" 你的 APPID AK SK """
+APP_ID = '你的 App ID'
+API_KEY = '你的 Api Key'
+SECRET_KEY = '你的 Secret Key'
+ 
+client = AipSpeech(APP_ID, API_KEY, SECRET_KEY)
+ 
+result  = client.synthesis('你好百度', 'zh', 1, {
+    'vol': 5,'per':4
+})
+ 
+ 
+# 识别正确返回语音二进制 错误则返回dict 参照下面错误码
+if not isinstance(result, dict):
+    with open('auido.mp3', 'wb') as f:
+        f.write(result)
+4、看文中代码
+
+""" 你的 APPID AK SK """
+APP_ID = '你的 App ID'
+API_KEY = '你的 Api Key'
+SECRET_KEY = '你的 Secret Key'
+这几个ID\key怎么搞？很简单，免费。
+
+点击如下网站，百度开发者账号随便注册，放心，免费。
+
+语音合成-百度AI​ai.baidu.com
+
+ 
+
+然后，如下点击立即使用即可。
+
+
+
+然后，如下点击创建应用即可，随便填。
+
+
+
+然后返回应用详情，就看到了代码需要的三个ID
+
+
+
+然后复制替换到代码中去。
+
+ 
+
+5、代码运行，依然是cmd，如下输入Python +test.py的路径即可生成auido.mp3文件，比如小编输入
+
+
+
+ 
+
+然后就搞定了。auido.mp3在哪里呢，自己找哈。
+
+ 
+
+ 
+
+注意：
+
+代码中的
+
+result  = client.synthesis('你好百度', 'zh', 1, {
+    'vol': 5,'per':4
+})
+（1）你好百度 就是你需要的文字转语音提供的文字，随便替换。
+
+（2）'per'：4中的数字，如下代表：
+
+
+
+ 
+
+ 
+
+有 0 个人打赏
+文章最后发布于: 2018-07-17 10:59:06
+Python实现文字转语音功能
+阅读数 1万+
+
+这是一篇简单的Python文字（汉字）转语音教程，当然对于其他语言工具在实现的方法上也是一样的。在自然语言处理上，文字、音频互转是一个很关键的技术点。对于语音转文字，这......
+博文
+来自：	IT派
+ 
+
+ 
+pyf621周前#3楼
+为什么我运行会报错呀
+Traceback (most recent call last):
+  File "F:\pyf.py", line 9, in <module>
+    result=client.synthesis('你好百度','zh',1,{'vol':5,'per':4})
+  File "D:\python\lib\site-packages\aip\speech.py", line 92, in synthesis
+    result = self._request(self.__ttsUrl, data)
+  File "D:\python\lib\site-packages\aip\base.py", line 90, in _request
+    params = self._getParams(authObj)
+  File "D:\python\lib\site-packages\aip\base.py", line 190, in _getParams
+    params['access_token'] = authObj['access_token']
+KeyError: 'access_token'
+————————————————
+版权声明：本文为CSDN博主「万能搜吧」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/chadian3912/article/details/81077537
