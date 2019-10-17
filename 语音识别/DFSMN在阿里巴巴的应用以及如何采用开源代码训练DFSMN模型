@@ -1,0 +1,123 @@
+http://blog.itpub.net/31077337/viewspace-2156064
+
+DFSMN在阿里巴巴的应用以及如何采用开源代码训练DFSMN模型
+语音识别 作者：赵钰莹 时间：2018-06-12 18:06:18  2774  0
+　　DFSMN模型是语音识别中一种先进的声学模型，语音识别中的声学模型是语音识别技术中的核心所在。具体来说，声学模型是根据输入语音进行发音可能性的识别，结合语言模型、解码器，就构成了完整的语音识别系统。本次开源的DFSMN模型，是阿里巴巴的高效工业级实现，相对于传统的LSTM、BLSTM等声学模型，该模型具备训练速度更快、识别更高效、识别准确率更高和模型大小压缩等效果。
+
+　　一、采用DFSMN模型的产品
+
+　　那么这个模型对普通人来说意味着什么呢?我们从研发团队获得的最新消息，即日起，阿里云所有公有云、专有云用户都可以享受到这个技术所带来的优势。在2017年的云栖大会上，阿里巴巴公开了关于语音识别声学模型的一个最新的技术进展，即这次开源的DFSMN技术。DFSMN模型技术是阿里巴巴语音识别的基础能力之一，在这些基础能力之上，阿里巴巴构建了一系列智能语音应用。
+
+　　在法庭庭审识别、智能客服、视频审核和实时字幕转写、声纹验证、物联网等多个场景成功应用。全国有近300家法院和超过一万家法庭在使用ET，每年有超过1.2亿次客服电话由ET协助人类接听。
+
+　　在传统语音交互产品方面，阿里云智能语音交互研究的技术平台能够精准转换用户的语音为对互联网内容和服务的意图，触达手机、IoT设备、互联网汽车、电视、智能音箱等各类终端，如与斑马网络、上汽合作的的荣威互联网汽车、与海尔合作的人工智能电视等。
+
+　　在下一代人机交互产品方面，已经落地语音售票机于上海地铁让市民使用;在前不久的2018云栖大会武汉峰会上，使用该技术的智能语音点餐机与真人收银员进行人机PK，人工智能收银员用49秒钟时间点了34杯咖啡，而对垒的人类收银员用时两分半完成。
+
+　　二、如何接入阿里云语音识别服务
+
+　　对于开发人员来说，如何接入DFSMN语音识别服务，即阿里云语音识别服务呢?具体可以参考两个页面，分别是：
+
+　　1. 智能语音交互产品首页 https://data.aliyun.com/product/nls
+
+　　2. 智能语音交互文档 https://help.aliyun.com/product/30413.html
+
+　　下面，我们简单的为大家介绍一下接入流程：
+
+　　1. 申请开通智能语音服务
+
+　　(1)进入阿里云官网，注册阿里云账号。若已有阿里云账号，请看下一步。
+
+　　(2)到“智能语音交互服务”页面，点击『立即开通』。
+
+　　(3)在跳转后的页面，点击『立即购买』，购买语音服务。实际不需付费，目前公有云用户可免费使用不超过10路并发。
+
+　　(4) 在数加-Access Key页面创建并获取您的Access Key ID 和 Secret。您可以使用它们调用智能语音服务。
+
+　　2. 账号安全的最佳实践：上面创建的Access Key对应您的主账号，有权使用所有您主账号上开通的服务，就像Linux系统中的root用户。建议关注安全性的客户不要直接使用这个Key，而应该在RAM系统创建子账号，使用子账号的Access Key访问语音服务。具体操作步骤如下：
+
+　　(1) 访问RAM子账号管理页面
+
+　　(2) 点击右上角“新建用户”按钮，在弹出的对话框中填写子账号用户名，其他为非必填项
+
+　　(3) 勾选底部“为该用户自动生成AccessKey”复选框，点击“确定按钮”
+
+　　(4) 在新弹出的对话框中点击“保存AK信息”，把该子账号的Access Key ID和Secret信息保存到本地。注意：这是查看和保存 Access Key Secret的唯一机会
+
+　　(5) 下面就可以使用此 Key 调用智能语音服务了
+
+　　3. 语音识别服务下的”一句话识别”服务支持的app_key如下表，选择“社交领域”的app_key为nls-service。
+
+
+
+DFSMN在阿里应用及采用开源代码训练模型　　
+
+　　注：
+
+　　(1) “SDK支持的结果返回方式”式包括“非流式”和“流式”两种模式，“非流式”简单来说就是用户整句话说完后返回识别结果，“流式”模式下用户一边说话一边返回识别结果。
+
+　　(2) “一句话识别”支持的领域包括：社交聊天、家庭娱乐、电商购物、智能客服等。用户可针对具体的使用场景选择对应领域的app_key。
+
+　　4. 下载JAVA SDK和DEMO，开始语音识别。具体SDK调用方式和demo可以参考 https://help.aliyun.com/document_detail/30414.html?spm=a2c4g.11186623.6.540.UIYqFJ
+
+　　5. 鉴权请求和具体方式可以参考 https://help.aliyun.com/document_detail/54528.html?spm=a2c4g.11186623.6.541.6cm5Ah
+
+　　6. 除了语音识别服务之外，阿里云智能语音交互还支持关键词检测和语音合成等服务，具体接入方式也可以参考智能语音交互的产品页面或文档页面。
+
+　　三、如何自己训练DFSMN声学模型
+
+　　这里我们介绍如何利用阿里巴巴开源的DFSMN代码，搭建一个基于DFSMN的语音识别系统。
+
+　　Step1. 训练数据下载
+
+　　目前开源的流程脚本是以LibriSpeech数据库为例子的。Librispeech是一个一千小时的免费开源的英文数据集。下载地址：http://www.openslr.org/12/
+
+DFSMN在阿里应用及采用开源代码训练模型
+
+　　可以将这些文件下载都本地一个data目录下，然后解压缩。其中train-clean-100，train-clean-360，train-clean-500会合并组成一个960小时的训练集。dev-clean 和 dev-other用于指导训练调参。test-clean和test-other 是两个测试集。关于Librispeech数据库的详细描述可以参考这篇论文："LibriSpeech: an ASR corpus based on public domain audio books", Vassil Panayotov, Guoguo Chen, Daniel Povey and Sanjeev Khudanpur, ICASSP 2015。
+
+　　Step2. 训练代码的下载和编译
+
+　　我们提供了两种开源代码形式：1)github-project：基于kaldi新建的一个分支，添加了DFSMN相关的代码;2)github-patch：将相关的代码改动编成一个补丁包。大家可以选择其中的任意一种方式去获得DFSMN的代码和相关实验脚本。
+
+　　方法一、Github Project
+
+　　工程的地址：https://github.com/tramphero/kaldi
+
+　　工程下载：git clone https://github.com/tramphero/kaldi
+
+　　Kaldi中文手册：https://shiweipku.gitbooks.io/chinese-doc-of-kaldi/content/
+
+　　方法二、Github Patch
+
+　　我们基于官方kaldi的"04b1f7d6658bc035df93d53cb424edc127fab819"版本添加的DFSMN相关的改动，然后将这些改动编译成一个PATCH包。PATCH的地址：https://github.com/alibaba/Alibaba-MIT-Speech
+
+　　这样做的好处是不同的研究人员可以将这个PATCH下载到自己的kaldi分支，然后把PATCH中的改动添加到自己当前的kaldi里。具体的命令是：
+
+　　#Take a look at what changes are in the patch
+
+　　git apply --stat Alibaba_MIT_Speech_DFSMN.patch
+
+　　#Test the patch before you actually apply it
+
+　　git apply --check Alibaba_MIT_Speech_DFSMN.patch
+
+　　#If you don’t get any errors, the patch can be applied cleanly.
+
+　　git am --signoff < Alibaba_MIT_Speech_DFSMN.patch
+
+　　Step3. 模型训练
+
+　　获得了数据和训练工具并且编译以后，我们可以利用开源的脚本训练模型，脚本所在的目录：
+
+　　kaldi/egs/librispeech/s5/run.sh.
+
+　　run.sh可以完全整个训练流程，不过需要注意的是需要在一开始配置下载的数据路径。
+
+　　脚本的前面都是官方提供的前端数据处理，GMM-HMM训练等流程。关于DFSMN的训练在跑完这些官方流程以后可以通过如下的命令进行：
+
+DFSMN在阿里应用及采用开源代码训练模型
+
+　　这里我们提供了3组不同的DFSMN配置。DFSMN_S, DFSMN_M, DFSMN_L对应的模型大小分别为9MB，21MB，30MB。目前开源的脚本以DFSMN_S为例子。local/nnet/run_fsmn_ivector.sh脚本是DFSMN相关的训练脚本。主要包含三部分：1)CE训练;2)生成alignment和lattice;3)smbr训练。通常我们只需要观察CE训练的模型就可以了。CE训练阶段，利用单个M40 GPU 将所有数据过一遍需要的训练时间大致需要6个小时，模型会进行10次迭代。所以单机训练只需要不到3天的时间就可以训练得到一个1千小时数据训练的声学模型。
+
+　　我们提供的流程是标准的960小时的训练集的任务。通常这个任务可以通过进行数据变形(speed-perturbed and volumn-perturbed)将训练集扩展到3千小时左右。我们实验采用多几多卡并行训练，得到了一个训练结果，相应的结果在kaldi/egs/librispeech/s5/RESULTS文件里作为一个参考性能。
