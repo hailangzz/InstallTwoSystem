@@ -1,0 +1,444 @@
+https://blog.csdn.net/zhanaolu4821/article/details/88977782
+
+阿里巴巴 2018 年开源的语音识别模型 DFSMN，将全球语音识别准确率纪录提高至 96.04%。DFSMN 模型，是阿里巴巴的高效工业级实现，相对于传统的 LSTM、BLSTM 等声学模型，该模型具备训练速度更快、识别更高效、识别准确率更高和模型大小压缩等效果。
+
+本场 Chat 的主要内容包括：
+
+语音识别流程简介
+Kaldi 的部署使用
+如何训练基于中文的 DFSMN 声学模型
+语音特征提取 MFCC 算法源码解读
+语音识别工具对比
+语音识别流程简介
+语音识别，通俗来讲，就是将一段语音信号转换成对应的文本信息。具体来说，语音识别是从一段连续声波中采样，将每个采样值量化；然后对量化的采样音频进行分帧，对于每一帧，抽取出一个描述频谱内容的特征向量；最后根据语音信号的特征识别语音所代表的单词。
+
+下图展示了语音识别的整个流程：
+
+enter image description here
+
+通过上图可以看到，语音识别的整个流程，主要包含特征提取和解码（声学模型、字典、语言模型）部分。
+
+特征提取：从语音波形中提取出随时间变化的语音特征序列（即将声音信号从时域转换到频域），为声学模型提供合适的特征向量。主要算法有线性预测倒谱系数（LPCC）和梅尔频率倒谱系数（MFCC）。
+声学模型：根据声学特性计算每一个特征向量在声学特征上的得分，输入是特征向量，输出为音素信息。最常用的声学建模方式是隐马尔科夫模型（HMM），基于深度学习的发展，深度神经网络（DNN）、卷积神经网络（CNN）、循环神经网络（RNN）等模型在观测概率的建模中取得了非常好的效果。
+字典：字或者词与音素的对应，中文就是拼音和汉字的对应，英文就是音标与单词的对应。（音素，单词的发音由音素构成。对英语来说，一种常用的音素集是卡内基梅隆大学的一套由 39 个音素构成的音素集，汉语一般直接用全部声母和韵母作为音素集）。
+语言模型：通过对大量文本信息进行训练，得到单个字或者词相互关联的概率。语音识别中，最常见的语言模型是 N-Gram。近年，深度神经网络的建模方式也被应用到语言模型中，比如基于 CNN 及 RNN 的语言模型。
+解码：通过声学模型、字典、语言模型对提取特征后的音频数据进行文字输出。
+在语音识别整个流程中，声学模型作为识别系统的底层模型，声学模型的任务是计算 P(O|W)P(O|W)（即模型生成观察序列的概率），它占据着语音识别大部分的计算开销，决定着语音识别系统的性能。所以，声学模型是语音识别系统中最关键的一部分。
+
+本次 Chat 主讲的阿里巴巴的 DFSMN 声学模型，是建立在另一个开源的语音识别工具 Kaldi 基础之上的，或者如官网所说的：
+
+enter image description here
+
+DFSMN 是 Kaldi 的一个补丁文件，所以，为了使用 DFSMN 模型，我们必须先部署 Kaldi 语音识别工具。
+
+Kaldi 的部署使用
+Kaldi 是一个开源的语音识别工具库，隶属于 Apache 基金会，主要由 Daniel Povey 开发和维护。Kaldi 内置功能强大，支持 GMM-HMM、SGMM-HMM、DNN-HMM 等多种语音识别模型的训练和预测。随着深度学习的影响越来越大，Kaldi 目前对 DNN、CNN、LSTM 以及 Bidirectional-LSTM 等神经网络结构均提供模型训练支持。
+
+目前在 GitHub 上这个项目依旧非常活跃，可以在 https://github.com/kaldi-asr/kaldi 下载代码，以及在 http://kaldi-asr.org/ 查看它的官方文档。
+
+笔者根据官方文档实现 Kaldi 的安装，并将阿里的 DFSMN 补丁加载到 Kaldi。以下是部署的完整步骤。
+
+1. 下载 Kaldi 源码
+
+[zss@gpu-1-0 ~]$ git clone https://github.com/kaldi-asr/kaldi.git kaldi-trunk --origin golden
+enter image description here
+
+2. 切换到 kaldi-trunk 目录，下载补丁源码
+
+[zss@gpu-1-0 ~]$ cd kaldi-trunk/
+[zss@gpu-1-0 kaldi-trunk]$ git clone https://github.com/alibaba/Alibaba-MIT-Speech
+enter image description here
+
+3. 检查补丁
+
+[zss@gpu-1-0 kaldi-trunk]$ git checkout 04b1f7d6658bc035df93d53cb424edc127fab819
+enter image description here
+
+4. 将补丁加载到 Kaldi 分支
+
+看看补丁中有什么变化：
+
+[zss@gpu-1-0 kaldi-trunk]$ git apply --stat Alibaba-MIT-Speech/Alibaba_MIT_Speech_DFSMN.patch
+enter image description here
+
+测试补丁：
+
+[zss@gpu-1-0 kaldi-trunk]$ git apply --check Alibaba-MIT-Speech/Alibaba_MIT_Speech_DFSMN.patch
+enter image description here
+
+添加 Git 账户邮箱和用户名，否则无法应用补丁。
+
+[zss@gpu-1-0 kaldi-trunk]$ git config --global user.email "userEmail"
+[zss@gpu-1-0 kaldi-trunk]$ git config --global user.name "username"
+应用补丁：
+
+[zss@gpu-1-0 kaldi-trunk]$ git am --signoff < Alibaba-MIT-Speech/Alibaba_MIT_Speech_DFSMN.patch
+enter image description here
+
+5. 安装 Kaldi
+
+切换到 tools 目录中，自动检测并安装缺少的依赖包，直到出现 all OK 为止。
+
+[zss@gpu-1-0 tools]$ extras/check_dependencies.sh
+enter image description here
+
+编译 –j 参数表示内核数，根据自己环境设定运用多少内核工作。
+
+[zss@gpu-1-0 tools]$ make -j 24
+enter image description here
+
+切换到 src 目录下，进行安装。
+
+[zss@gpu-1-0 src]$cd ../src
+[zss@gpu-1-0 src]$ ./configure –shared
+enter image description here
+
+继续安装，执行以下命令，最后一行是 SUCCESS 表明成功。
+
+[zss@gpu-1-0 src]$ make depend -j 24
+继续安装，执行以下命令，若最后一行是 Done 则安装成功。
+
+[zss@gpu-1-0 src]$ make -j 24
+enter image description here
+
+自动安装其它扩展包，执行以下命令：
+
+[zss@gpu-1-0 src]$ make ext
+运行自带的 demo，检测是否成功。
+
+切换到 /kaldi-trunk/egs/yesno/s5 目录下，运行程序。
+
+[zss@gpu-1-0 src]$ cd ../egs/yesno/s5/
+[zss@gpu-1-0 s5]$ ./run.sh
+通过运算 WER 为 0，在运算过程中，WER 越小，代表错误率越低。
+
+enter image description here
+
+至此，我们已经在服务器成功部署了 Kaldi 工具，并把 DFSMN 补丁打到该工具中。接下来，我们将利用该工具训练声学模型。
+
+训练基于中文的 DFSMN 声学模型
+数据准备阶段
+
+本次模型训练使用的是清华大学提供的 30 个小时的语料库，下载地址如下：http://www.openslr.org/18/。
+
+数据集包含如下内容：
+
+enter image description here
+
+下载数据集到服务器指定位置，进入到 ../thchs30-openslr/data_thchs30 位置，我们可以看到如下目录内容：
+
+enter image description here
+
+其中 data 目录下包含所有训练的语音以及标注文件，我们随机打开一个语音标注文件，可以看到：
+
+enter image description here
+
+语音标注文件主要包含三部分：
+
+分词后的语音文字
+文字对应的拼音（含音调）
+文字对应的音素（中文为声母、韵母）
+准备完语料集，接下来我们将看一下如何修改脚本，训练 DFSMN 声学模型。
+
+修改脚本阶段
+
+进入到 Kaldi 的中文模型训练路径 ../kaldi-trunk/egs/thchs30/s5，我们可以看到如下内容：
+
+enter image description here
+
+首先，修改 cmd.sh 脚本，把原脚本注释掉，修改为本地运行：
+
+enter image description here
+
+然后，修改 run.sh 脚本，主要修改如下：
+
+enter image description here
+
+n=8     #指定并行任务数
+thchs=../chinese-data/thchs30-openslr   #设定数据集位置
+选定阿里巴巴 DFSMN 模型类型，添加如下内容到 run.sh 脚本最后：
+
+    # ## Traing FSMN models on the cleaned-up data
+    # ## Three configurations of DFSMN with different model size: DFSMN_S, DFSMN_M, DFSMN_L
+    local/nnet/run_fsmn_ivector.sh DFSMN_S
+    # local/nnet/run_fsmn_ivector.sh DFSMN_M
+    # local/nnet/run_fsmn_ivector.sh DFSMN_L
+enter image description here
+
+训练模型阶段
+
+执行 ./run.sh，开始训练模型，整个模型的训练过程大约 2 天左右。
+
+模型使用阶段
+
+最终训练完毕的文件目录如下：
+
+enter image description here
+
+进入到 exp 目录，我们会看到训练出来的模型：
+
+List item
+
+run.sh 脚本会训练出 5 种模型：
+
+monophone 单音素模型是训练单音子隐马尔科夫模型，一共进行 40 次迭代；
+tri1 三音素模型是训练与上下文相关的三音子模型；
+tri2b 模型用来进行线性判别分析和最大似然线性转换；
+tri3b 模型用来训练发音人自适应，基于特征空间最大似然线性回归；
+tri4b 模型用来在现有特征上训练模型，它基于树统计中的计数的重叠判断的相似性来选择旧模型中最接近的状态。
+注：笔者使用 GPU 训练的模型，如果不使用 GPU，最终训练不出 DNN 模型。
+
+接下来我们将使用 tri4b 模型，识别我们提供的语音文件内容。
+
+首先，拷贝 kaldi-trunk/egs/voxforge/online_demo 到 thchs30 下并重命名 online_demo_tri4b_ali，和 s5 同级；online_demo_tri4b_ali 新建 online-data 和 work 两个文件夹；online-data 下新建 audio 和 models，audio 放要识别的 wav，models 新建 tri4b，最终目录结构如下：
+
+enter image description here
+
+然后，将 s5/exp/tri4b 下的 final.alimdl、12.mat、final.mat、20.mdl拷贝到 models/tri4b，把 s5/exp/tri4/graph_word 里面的 words.txt 和 HCLG.fst 也拷过去。
+
+最终目录结构：
+
+enter image description here
+
+最后，修改 run.sh 脚本，主要修改以下三部分内容：
+
+ac_model_type=tri4b    #使用的模型类型
+ 
+online-gmm-decode-faster --rt-min=0.5 --rt-max=0.7 --max-active=4000 --beam=12.0 --acoustic-scale=0.0769 --left-context=3 --right-context=3 `$ac_model/final.alimdl $ac_model/HCLG.fst $ac_model/words.txt '1:2:3:4:5' $`trans_matrix;;
+ 
+online-wav-gmm-decode-faster --verbose=1 --rt-min=0.8 --rt-max=0.85 --max-active=4000 --beam=12.0 --acoustic-scale=0.0769 --left-context=3 --right-context=3 scp:`$decode_dir/input.scp $ac_model/final.alimdl $ac_model/HCLG.fst $ac_model/words.txt '1:2:3:4:5' ark,t:$decode_dir/trans.txt ark,t:$decode_dir/ali.txt $`trans_matrix;;
+修改完毕，上传一段自己录制的音频到 online-data/audio 目录，执行 ./run.sh，识别语音结果如下：
+
+enter image description here
+
+通过与语音源文对比后，发现准确率并没有阿里说的 96.04%，这是为什么？
+
+笔者重新研究了一下 DFSMN 模型的论文，以及到 GitHub 深扒了一下 DFSMN 源码文件，发现阿里所说的准确率高到 96.04% 是建立在 5000 个小时训练集基础之上的，而我们仅用了 30 个小时的训练集。
+
+所以，如果我们想提高准确率，必须标注更多的语音文件，加大训练集。
+
+如果我们已经成功地训练出了模型，可进入到 s5/data/mfcc/train 目录，查看 spk2utt 文件，如下：
+
+enter image description here
+
+红色方框是不同说话人的标号，右边的每行对应由该说话人录音的文件。通过上图，我们可以知道 Kaldi 工具不仅帮我们训练了模型，还帮我们识别出了有多少个录音人，即说话人识别技术。
+
+那 Kaldi 是怎么做到的？接下来将从算法角度为大家分享一下 Kaldi 的特征提取技术。
+
+语音特征提取 MFCC 算法源码解读
+MFCC（MeI-Freguency CeptraI Coefficients）是语音特征参数提取方法之一，因其独特的基于倒谱的提取方式，更加符合人类的听觉原理，因而也是最为普遍、最有效的语音特征提取算法。通过 MFCC，我们可以有效地区分出不同的人声，识别不同的说话人。
+
+MFCC 语音特征的提取过程，如下图：
+
+enter image description here
+
+预加重
+
+预加重其实就是将语音信号通过一个高通滤波器，来增强语音信号中的高频部分，并保持在低频到高频的整个频段中，能够使用同样的信噪比求频谱。在本实验中，选取的高通滤波器传递函数为：
+
+y(n)=x(n)−a∗x(n−1)y(n)=x(n)−a∗x(n−1)
+
+aa 为预加重系数，我们通常取 aa=0.97。预加重部分源码：
+
+def pre_emphasis(signal, coefficient=0.97):
+'''对信号进行预加重'''
+return numpy.append(signal[0], signal[1:] - coefficient * signal[:-1])
+分帧
+
+分帧是指在给定的音频样本文件中，按照某一个固定的时间长度分割，分割后的每一片样本，称之为一帧。
+
+分帧部分对应的源码：
+
+def audio2frame(signal, frame_length, frame_step, winfunc=lambda x: numpy.ones((x,))):
+'''分帧'''
+signal_length = len(signal)
+frame_length = int(round(frame_length))
+frame_step = int(round(frame_step))
+if signal_length <= frame_length:
+    frames_num = 1
+else:
+    frames_num = 1 + int(math.ceil((1.0 * signal_length - frame_length) / frame_step))
+pad_length = int((frames_num - 1) * frame_step + frame_length)
+zeros = numpy.zeros((pad_length - signal_length,))
+pad_signal = numpy.concatenate((signal, zeros))
+indices = numpy.tile(numpy.arange(0, frame_length), (frames_num, 1)) + numpy.tile(numpy.arange(0, frames_num * frame_step, frame_step),(frame_length, 1)).T
+indices = numpy.array(indices, dtype=numpy.int32)
+frames = pad_signal[indices]
+win = numpy.tile(winfunc(frame_length), (frames_num, 1))
+return frames * win
+分帧是先将 N 个采样点集合成一个观测单位，也就是分割后的帧。通常情况下 N 的取值为 512 或 256，涵盖的时间约为 20~30ms。N 值和窗口间隔可动态调整。为避免相邻两帧的变化过大，会让两相邻帧之间有一段重叠区域，此重叠区域包含了 M 个取样点，一般 M 的值约为 N 的 1/2 或 1/3。
+
+语音识别中所采用的信号采样频率一般为 8kHz 或 16kHz。以 8kHz 来说，若帧长度为 256 个采样点，则对应的时间长度是 256/8000*1000=32ms。本次测试中所使用的采样率为 16kHz，窗长 37.5ms（600 个采样点），窗间隔为 10ms（160 个采样点）。
+
+加窗
+
+在对音频进行分帧之后，需要对每一帧进行加窗，以增加帧左端和右端的连续性，减少频谱泄漏。比较常用的窗口函数为 Hamming 窗。
+
+假设分帧后的信号为 S(n),n=0,1,2…,N−1S(n),n=0,1,2…,N−1，其中 NN 为帧的大小，那么进行加窗的处理为：
+
+enter image description here
+
+W(n)W(n) 的形式如下：
+
+enter image description here
+
+不同的 aa 值会产生不同的汉明窗，一般情况下 aa 取值 0.46。
+
+加窗部分的源码：
+
+    def deframesignal(frames, signal_length, frame_length, frame_step, winfunc=lambda x: numpy.ones((x,))):
+    '''加窗'''
+    signal_length = round(signal_length)
+    frame_length = round(frame_length)
+    frames_num = numpy.shape(frames)[0]
+    assert numpy.shape(frames)[1] == frame_length, '"frames"矩阵大小不正确，它的列数应该等于一帧长度'
+    indices = numpy.tile(numpy.arange(0, frame_length), (frames_num, 1)) + numpy.tile(numpy.arange(0, frames_num * frame_step, frame_step),(frame_length, 1)).T
+    indices = numpy.array(indices, dtype=numpy.int32)
+    pad_length = (frames_num - 1) * frame_step + frame_length
+    if signal_length <= 0:
+        signal_length = pad_length
+    recalc_signal = numpy.zeros((pad_length,))
+    window_correction = numpy.zeros((pad_length, 1))
+    win = winfunc(frame_length)
+    for i in range(0, frames_num):
+        window_correction[indices[i, :]] = window_correction[indices[i, :]] + win + 1e-15
+        recalc_signal[indices[i, :]] = recalc_signal[indices[i, :]] + frames[i, :]
+    recalc_signal = recalc_signal / window_correction
+    return recalc_signal[0:signal_length]
+对信号进行离散傅立叶变换（DFT）
+
+由于信号在时域上的变换通常很难看出信号的特性，所以通常将它转换为频域上的能量分布来观察，不同的能量分布，代表不同语音的特性。所以在进行了加窗处理后，还需要再经过离散傅里叶变换以得到频谱上的能量分布。对分帧加窗后的各帧信号进行快速傅里叶变换 FFT 得到各帧的频谱。并对语音信号的频谱取模平方得到语音信号的功率谱。
+
+设语音信号的 DFT 为：
+
+enter image description here
+
+能量的分布为： enter image description here
+
+在本次测试中，采用 DFT 长度 NN=512，结果值保留前 257 个系数。对应源码如下：
+
+def spectrum_magnitude(frames, NFFT = 512):
+'''计算每一帧经过FFT变幻以后的频谱的幅度，若frames的大小为N*L,则返回矩阵的大小为N*NFFT'''
+complex_spectrum = numpy.fft.rfft(frames, NFFT)
+return numpy.absolute(complex_spectrum)
+ 
+def spectrum_power(frames, NFFT):
+'''计算每一帧傅立叶变换以后的功率谱'''
+return 1.0 / NFFT * numpy.square(spectrum_magnitude(frames, NFFT))
+Mel 滤波器组
+
+MFCC 考虑人类的听觉特征，先将线性频谱映射到基于听觉感知的 Mel 非线性频谱中，然后转换到倒谱上。在 Mel 频域内，人对音调的感知度为线性关系。举例来说，如果两段语音的 Mel 频率相差两倍，则人耳听起来两者的音调也相差两倍。Mel 滤波器的本质其实是一个尺度规则：通常是将能量通过一组 Mel 尺度的三角形滤波器组，如定义有 MM 个滤波器的滤波器组，采用的滤波器为三角滤波器，中心频率为 f(m),m=1,2…Mf(m),m=1,2…M，MM 通常取 22~26。f(m)f(m)之间的间隔随着 mm 值的减小而缩小，随着 mm 值的增大而增宽，如图所示：
+
+enter image description here
+
+从频率到 Mel 频率的转换公式为：
+
+enter image description here
+
+其中 ff 为语音信号的频率，单位赫兹（Hz）。
+
+def hz2mel(hz):
+'''把频率 hz 转化为梅尔频率'''
+return 2595 * numpy.log10(1 + hz / 700.0)
+def mel2hz(mel):
+'''把梅尔频率转化为 hz'''
+return 700 * (10 ** (mel / 2595.0) - 1)
+将频率映射到最接近的 DFT 频率： enter image description here
+
+对应源码如下：
+
+def get_filter_banks(filters_num=20, NFFT=512, samplerate=16000, low_freq=0, high_freq=None):
+    '''计算梅尔三角间距滤波器，该滤波器在第一个频率和第三个频率处为 0，在第二个频率处为 1'''
+    low_mel = hz2mel(low_freq)
+    high_mel = hz2mel(high_freq)
+    mel_points = numpy.linspace(low_mel, high_mel, filters_num + 2)
+    hz_points = mel2hz(mel_points)
+    bin = numpy.floor((NFFT + 1) * hz_points / samplerate)
+    fbank = numpy.zeros([filters_num, NFFT / 2 + 1])
+    for j in xrange(0, filters_num):
+        for i in xrange(int(bin[j]), int(bin[j + 1])):
+            fbank[j, i] = (i - bin[j]) / (bin[j + 1] - bin[j])
+        for i in xrange(int(bin[j + 1]), int(bin[j + 2])):
+            fbank[j, i] = (bin[j + 2] - i) / (bin[j + 2] - bin[j + 1])
+    return fbank
+对频谱进行离散余弦变换（DCT）
+
+使⽤离散余弦变换，进⾏⼀个傅⽴叶变换的逆变换，得到倒谱系数。 enter image description here
+
+由此可以得到 26 个倒谱系数。只取其 [2:13] 个系数，第 1 个用能量的对数替代，这 13 个值即为所需的 13 个 MFCC 倒谱系数。
+
+     def lifter(cepstra, L=22):
+        '''升倒谱函数'''
+        if L > 0:
+            nframes, ncoeff = numpy.shape(cepstra)
+            n = numpy.arange(ncoeff)
+            lift = 1 + (L / 2) * numpy.sin(numpy.pi * n / L)
+            return lift * cepstra
+        else:
+            return cepstra
+动态差分参数的提取（包括一阶差分和二阶差分）
+
+标准的倒谱参数 MFCC 只反映了语音参数的静态特性，语音的动态特性可以用这些静态特征的差分谱来描述。实验证明：把动、静态特征结合起来才能有效提高系统的识别性能。
+
+差分参数的计算可以采用下面的公式： enter image description here enter image description here enter image description here
+
+上式中，dtdt 表示第 tt 个一阶差分，CtCt 表示第 tt 个倒谱系数，QQ 表示倒谱系数的阶数，KK 表示一阶导数的时间差，可取 1 或 2。
+
+对应源码：
+
+    def derivate(feat, big_theta=2, cep_num=13):
+    '''计算一阶系数或者加速系数的一般变换公式'''
+    result = numpy.zeros(feat.shape)
+    denominator = 0
+    for theta in numpy.linspace(1, big_theta, big_theta):
+        denominator = denominator + theta ** 2
+    denominator = denominator * 2
+    for row in numpy.linspace(0, feat.shape[0] - 1, feat.shape[0]):
+        tmp = numpy.zeros((cep_num,))
+        numerator = numpy.zeros((cep_num,))
+        for t in numpy.linspace(1, cep_num, cep_num):
+            a = 0
+            b = 0
+            s = 0
+            for theta in numpy.linspace(1, big_theta, big_theta):
+                if (t + theta) > cep_num:
+                    a = 0
+                else:
+                    a = feat[row][t + theta - 1]
+                if (t - theta) < 1:
+                    b = 0
+                else:
+                    b = feat[row][t - theta - 1]
+                s += theta * (a - b)
+            numerator[t - 1] = s
+        tmp = numerator * 1.0 / denominator
+        result[row] = tmp
+    return result
+⾄此，我们计算得到了⾳频⽂件每⼀帧的 39 个 Mel 频率倒谱系数（13 个 MFCC + 13 个一阶微分系数 + 13 个加速系数），这些作为语音文件的特征数据，可以运用在之后的分类中。
+
+语音识别工具对比
+随着近几年国内、国外语音识别技术的发展，脱颖而出几款十分受欢迎的开源语音识别工具，这其中包括 CMUSphinx、HTK、Julius、Kaldi 和 RWTH ASR。
+
+CMUSphinx 是卡内基梅隆大学开发的一组语音识别系统的总称，包括一系列语音识别器（Sphinx 2~4）和声学模型训练器（SphinxTrain）。在 GitHub 平台有 C 和 Java 两个版本，下载地址：https://github.com/cmusphinx。
+HTK 最初是在剑桥大学工程系（CUED）的机器智能实验室（以前称为语音视觉和机器人小组）开发的，HTK 除了作为处理 HMM 的专有软件工具包，还可作为语音合成，字符识别和 DNA 测序。HTK 现在并不是一款严格意义的开源工具，之前一直作为商业化软件，后来又回归到剑桥大学。HTK 工具更新缓慢，官方文档地址：http://htk.eng.cam.ac.uk/。
+Julius 起源于 1997 年，一开始作为日本 LVCSR 研究的免费软件工具包的一部分而开发，目前 GitHub 平台由 3 位开发人员维护，最近一次更新在 2 年前，地址： https://github.com/julius-speech/julius。
+RWTH ASR 由 RWTH Aachen University 人类语言技术和模式识别小组开发，包括用于开发声学模型和解码器的工具，以及用于说话者适应、说话者自适应训练、无监督训练、判别训练和字格处理的组件。RWTH ASR 项目并没有挂载到 GitHub，而是放在了学校自己的平台，下载地址：http://www-i6.informatik.rwth-aachen.de/rwth-asr/。
+接下来，让我们看一下维基百科对几款主流开源工具（HTK 非开源）的对比图：
+
+enter image description here
+
+通过对比图我们可以发现， 这些工具大多都是以隐马尔可夫模型（HMM）和神经网络（Neural net）模型为核心，底层编程语言以 C、C++ 为主，实现语音转文本功能。
+
+我们本次 Chat 讲的 Kaldi 基于 Neural net，隶属于 Apache 基金会，可部署在 Windows、Linux、MacOS 平台。Kaldi 工具底层通过 C++ 编程语言实现，目前对外也提供了 Python 接口，支持在线、离线两种状态的语音识别。
+
+接下来，我们从 GitHub 社区活跃度横向对比 CMUSphinx、Julius、Kaldi 这三款受欢迎程度。
+
+enter image description here
+
+star：关注别人项目人数
+fork：创建源项目代码库的分支并拷贝到自己的账号的人数
+通过这两项指标的对比，我们可以很明显地发现，Kaldi 的社区活跃度明显高于其它的项目，受到了广大开发者的喜爱。另外，Kaldi 官方提供了完整的开发文档（可看前文有链接）并不定期地更新，为开发者提供更大的自由度以及更低的开发成本，因此在开发圈始终保持着强大的生命力。
+
+【彩蛋】目前国内免费已经标注好的中文语料集（音频 + 含音调、音素的文本数据）也仅限于清华大学标注的 30 个小时语料集。笔者在业余时间，自己标注了一批关于高校信息的语料集，下载地址如下：https://pan.baidu.com/s/1e63akjTgk0Ef7oXNRHtc4w，密码 g6af。
+
+转自  https://gitbook.cn/books/5bd5167412a0ed083a017801/
