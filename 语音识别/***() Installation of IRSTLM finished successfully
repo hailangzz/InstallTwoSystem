@@ -1,0 +1,25 @@
+https://blog.csdn.net/agangz/article/details/83011672
+
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/agangz/article/details/83011672
+aishell运行报错，提示需安装kaldi-lm
+
+local/aishell_train_lms.sh: train_lm.sh is not found. That might mean it's not installed
+local/aishell_train_lms.sh: or it is not added to PATH
+local/aishell_train_lms.sh: Use the script tools/extra/install_kaldi_lm.sh to install it
+
+安装kaldi-lm后，显示如下信息：
+
+Installation of kaldi_lm finished successfully
+Please source tools/env.sh in your path.sh to enable it
+
+在aishell的s5目录下的path.sh最后增加一行信息即可：
+
+export PATH=$PATH:/data1/kaldi-master/tools/kaldi_lm
+
+其中/data1/kaldi-master/为kaldi的安装目录，替换为用户自己的目录即可
+
+
+————————————————
+版权声明：本文为CSDN博主「deepaudio」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/agangz/article/details/83011672
