@@ -1,0 +1,5 @@
+https://www.jianshu.com/p/3bcb106e19c7
+
+Checking OpenFst library in  ...
+***configure failed: Could not find file /include/fst/fst.h:
+  you may not have installed OpenFst. See ../tools/INSTALL ***
