@@ -1,0 +1,75 @@
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/chinabing/article/details/50724575
+1. 安装
+
+本人下载的是openfst-1.5.1版本
+
+(1) ./configure
+
+(2) make
+
+(3) sudo make install
+
+查看/usr/local/bin目录是否生成可执行文件，以及/usr/local/lib目录生成动态库文件libfst.so
+
+2. C++程序
+
+#include <fst/fstlib.h>
+using namespace fst;
+int main() {
+  StdVectorFst fst;
+ 
+  // Adds state 0 to the initially empty FST and make it the start state.
+  fst.AddState();   // 1st state will be state 0 (returned by AddState)
+  fst.SetStart(0);  // arg is state ID
+ 
+  // Adds two arcs exiting state 0.
+  // Arc constructor args: ilabel, olabel, weight, dest state ID.
+  fst.AddArc(0, StdArc(1, 1, 0.5, 1));  // 1st arg is src state ID
+  fst.AddArc(0, StdArc(2, 2, 1.5, 1));
+ 
+  // Adds state 1 and its arc.
+  fst.AddState();
+  fst.AddArc(1, StdArc(3, 3, 2.5, 2));
+ 
+  // Adds state 2 and set its final weight.
+  fst.AddState();
+  fst.SetFinal(2, 3.5);  // 1st arg is state ID, 2nd arg weight
+ 
+  fst.Write("binary.fst");
+ 
+}
+Compile&Link:
+
+    g++ -std=c++11 -I/usr/local/include test.cpp -L/usr/local/lib -lfst-ldl
+
+    说明: openfst需要c++11环境
+
+
+
+3. eclipse环境部署
+
+　　c++11环境:project右键->Properties->c/c++ build->Settings->GCC C++ Compiler->Miscellaneous -> Other flags后面加上 -std=c++11
+
+   link动态库:project右键->Properties->c/c++ general->Path and Symbols
+
+             library paths添加/usr/local/lib
+
+             libraries添加fst和dl
+
+
+
+参考文档
+
+http://stackoverflow.com/questions/10363646/compiling-c11-with-g
+
+http://ubuntuforums.org/showthread.php?t=2151633
+
+http://www.openfst.org/twiki/bin/view/FST/ReadMe
+
+http://www.openfst.org/twiki/bin/view/FST/FstQuickTour
+
+http://bbs.csdn.net/topics/320033177
+————————————————
+版权声明：本文为CSDN博主「chinabing」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/chinabing/article/details/50724575
