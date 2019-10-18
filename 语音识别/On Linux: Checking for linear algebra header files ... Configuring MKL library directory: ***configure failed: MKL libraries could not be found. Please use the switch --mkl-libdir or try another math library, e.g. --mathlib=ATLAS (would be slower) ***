@@ -1,0 +1,11 @@
+On Linux: Checking for linear algebra header files ...
+Configuring MKL library directory: ***configure failed: MKL libraries could not be found. Please use the switch --mkl-libdir or try another math library, e.g. --mathlib=ATLAS (would be slower) ***
+
+解答：
+https://github.com/kaldi-asr/kaldi/issues/3217
+
+mkl安装与使用
+https://www.cnblogs.com/qujingtongxiao/p/9922395.html
+
+linux下安装MKL库
+https://blog.csdn.net/wflwn/article/details/78680604
