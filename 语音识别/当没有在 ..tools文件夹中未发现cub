@@ -1,0 +1,6 @@
+***configure failed: Could not find file /cub/cub.cuh:
+  you may not have installed cub.  Go to ../tools/ and type
+  e.g. 'make cub'; cub is a new requirement. ***
+
+
+在github上下载cub 然后，解压到../tools目录中。
