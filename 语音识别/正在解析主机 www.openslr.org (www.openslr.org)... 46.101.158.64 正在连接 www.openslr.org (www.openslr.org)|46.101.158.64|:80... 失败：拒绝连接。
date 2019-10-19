@@ -1,0 +1,5 @@
+正在解析主机 www.openslr.org (www.openslr.org)... 46.101.158.64
+正在连接 www.openslr.org (www.openslr.org)|46.101.158.64|:80... 失败：拒绝连接。
+
+是因为：www.openslr.org (www.openslr.org) 连接不上；
+要修改:   /run.sh 文件， 里的连接信息。
