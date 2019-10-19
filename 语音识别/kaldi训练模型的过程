@@ -1,0 +1,40 @@
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/Championvas/article/details/81169785
+整理一下训练新模型的过程：
+1.进 入 到 kaldi-trunk/egs目录下创建XX（看你心情随便命名）文件夹，然后在文件夹里创建一个audio文件夹，在audio文件夹内在创建两个文件夹train和test。然后把所有的音频文件（.wav文件）放到train和test内（根据你的需求选择测试集和训练集，我是两个文件夹里面都是放的一样的）
+2.在XX文件夹下面创建一个文件夹data，在data里面建立test和train文件夹。然后分别在文件夹里面构建以下几个文档：
+ 1）spk2gender 这个文档表明说话人的性别
+ 2)wav.scp
+ 3)test
+ 4)utt2spk
+（注意，在train和test里面都要有这些文件）
+ 3.在data文件夹下面创建另外一个文件夹local，在local文件夹创建一个文件corpus.txt
+这几个文件的作用还有例子在百度搜索“在kaldi工具包使用小数字语料库创建一个简单的ASR系统”这篇文章可以看到，这里就不在赘述。我的这些文档是在windows下整理的，如果有时间，再整理一个文档来进行说明。
+4.在local文件夹下创建一个新的文件夹‘dict’.在dict下创建文件：
+ 1）lexicon.txt
+ 2）nonsilence_phones.txt(你工程中所有的非静音因素)
+ 3）silence_phones.txt（这里面是静音音素）
+ 4）optional.txt
+    这几个文件的创建方法也在上面说的文章里面有介绍。1)2）两个需要按照你工程实际需要的音素表来写，需要自己生成音素表。
+5.在 kaldi-trunk/egs/wsj/s5 目录下拷贝出两个文件夹(注意拷贝所有内
+容):‘utils’和‘steps’,并把它们放在你的 kaldi-trunk/egs/XX 目录下
+6.安装srilm（这个自行百度就行）
+7.在目录 kaldi-trunk/egs/XX 目录下创建一个名为‘conf’的文件夹。
+在 kaldi-trunk/egs/XX/conf 目录下创建两个文件：
+1）decode.config
+2)mfcc.conf(这个文件需要根据你的需要加一些，我这次加了一句采样率的  --sample-frequency=16000)
+8. 在 kaldi-trunk/egs/XX目录下创建 3 个脚本:
+1）cmd.sh
+2)path.sh
+3)run.sh
+    脚本根据实际情况来修改吧，主要是修改一些路径的问题，最后就是运行脚本了。
+    我相信，没有几个能一次就运行成功的，总是会出现一些莫名其妙的错误。
+    如果，你和我一样，是在windows下面整理的数据直接拷贝过来的。那么，你要注意对因素表里面的内容进行排序。排序之后会生成一个空行，需要删除。把所有拷贝过来的文档都要另存为unix/linux格式的。一定要特别注意路径的问题，各个地方的路径问题，只要不是你手动输入的，都要注意。
+    如果运行脚本之后有错误，可以到exp下的log文件夹中去查看错误，然后针对性的修改。
+
+ 
+
+
+————————————————
+版权声明：本文为CSDN博主「Championvas」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/Championvas/article/details/81169785
