@@ -1,0 +1,90 @@
+https://blog.csdn.net/wbgxx333/article/details/41217059
+
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/u010384318/article/details/41217059
+      本博客是在@冒顿和群里的一个同学的指导下完成的。特此感谢……
+
+      众所周知，kaldi对硬件的要求，希望大家一开始都弄个好的机器，方便后面自己在kaldi里大展身手。下面是怎么去装cuda和在kaldi中怎么使用。
+
+      特别提醒，如果显卡是gtx970或者980的话就不是下面这个驱动啊。大家要注意的哦。网站为：
+
+     http://developer.download.nvidia.com/compute/cuda/6_5/rel/installers/cuda-repo-ubuntu1404-6-5-prod_6.5-19_amd64.deb。
+
+我网盘的地址：http://pan.baidu.com/s/1i3mpdad。也可以去这个地址下载。
+      首先说明我们的显卡是geforce ，其他的显卡是否一样不知道。以下是安装步骤和注意事项：
+     1、 安装软件： apt-get install ppa-purge
+     2、 增加安装源：  apt-add-repository ppa:xorg-edgers
+     3、更新安装源： apt-get update
+     4、安装nvidai 显卡驱动： apt-get install nvidia-current nvidia-settings
+     5、下载cuda 安装包，这里说明下，如果是12.04就修改1404为1204哈。
+          wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1404/x86_64/cuda-repo-ubuntu1404_6.5-14_amd64.deb
+     6、安装cuda安装包，这个也是啊，上面下了什么就改什么名字啊。
+           dpkg -i cuda-repo-ubuntu1404_6.5-14_amd64.deb 
+     7. apt-get update
+     8、安装cuda：apt-get install cuda 
+     9、在kaldi的src 中 make clean，主要是为了清楚我们之前的编译结果
+     10、./configure  ：重新生成配置文件，这时会自动检查是否安装了cuda，这里会有显示是不是有cuda。
+             到src/cudamatrix 中Makefile 中修改 CUDA_ARCH =-gencode 那一行.我用的是geforce 9600 显卡计算能力为1.1，则修改compute=11,code=sm_11,把        TESTFILES 改为BINFILES
+     11、make all 即可
+        运行src/cudamatrix/目录下运行 ./cu-vector-test，如果不报错，则表明可以用GPU进行矩阵运算了。
+
+
+
+     如果此方法不通，大家尝试去这里看下：http://blog.csdn.net/abcjennifer/article/details/23016583
+
+后面我将更新ubuntu 14.04+cuda 6.5.谢谢……
+
+2014.11.19晚更新：
+
+平台：64位 ubuntu 14.04 物理机  显卡是gtx 980，装cuda 6.5.感谢@神牛的指导。
+
+1.安装所需要的库：
+
+sudo apt-get install freeglut3-dev build-essential libx11-dev libxmu-dev
+libxi-dev libgl1-mesa-glx libglu1-mesa libglu1-mesa-dev
+2.删除所来的nvidia驱动的库：  
+
+sudo apt-get remove --purge nvidia*  
+
+sudo nano /etc/modprobe.d/blacklist.conf  
+
+在终端的末尾添加：
+
+blacklist amd76x_edac （这个本身就有，就在这后面添加后面的哈）
+blacklist vga16fb
+blacklist nouveau
+blacklist rivafb
+blacklist nvidiafb
+blacklist rivatv
+
+3.这里首先要下载cuda_6.5.19_linux_64.run，这个我放到我百度网盘里哈。地址：http://pan.baidu.com/s/1nt1aaed。也可以去官网下载。
+
+关掉图像界面，按Ctrl+Alt+F1, 登陆输入账号和密码，然后：
+
+sudo service lightdm stop
+chmod +x cuda_6.5.19_linux_64.run
+sudo ./cuda_6.5.19_linux_64.run
+
+这样后就会显示cuda的一些东西，你直接按enter到底，然后根据那个输入acept，y等等这些啊，尽量同意那些啊。最后就告诉你：
+
+Driver:   Installed
+Toolkit:  Installed In /Usr/Local/Cuda-6.5
+Samples:  Installed.
+
+这样基本就安装好了啊。
+
+ 
+
+然后再kaldi的src目录下./configure ，会显示cuda是不是安装好了。然后make all，最后到src的cudamatrix目录下运行：./cu-vector-test，就会显示gpu什么的啊。
+
+至此，你就大功告成了啊。你可以运行kaldi里的dnn模块啊。enjoy it。
+
+下面就可以使用gpu来运行我们的kaldi程序了。相信你很期待这个速度吧，加油吧……
+ 欢迎使用其他显卡的同学分享你们的经验，此博文将收录到kaldi全部资料V0.5里。
+
+ 
+
+有任何问题可以在下面留言，我应该每天都看博客，会回复及时的啊。也可以去我们的kaldi群探讨，欢迎您的加入。
+————————————————
+版权声明：本文为CSDN博主「wbglearn」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/wbgxx333/article/details/41217059
