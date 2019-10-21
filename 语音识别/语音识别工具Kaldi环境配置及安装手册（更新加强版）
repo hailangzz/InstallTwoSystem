@@ -1,0 +1,393 @@
+https://blog.csdn.net/jojozhangju/article/details/51326798
+
+一、 安装操作系统
+
+1. 下载Ubuntu 14.04版本
+
+注：强烈不建议下载比较新的版本，首先不能保证稳定性及兼容性；其次，太新的版本出了问题都没办法google。另外，不要手贱的点更新之类的，否则会出意想不到的灾难性麻烦（本人亲身体验）。
+
+2. 在Windows 10系统下面创建空白磁盘分区：
+
+- 右键我的电脑
+
+- 选择管理
+
+- 选择磁盘管理
+
+- 选择一个磁盘
+
+- 右键压缩卷
+
+- 压缩后的磁盘变成为未分配部分
+
+3. 下载并安装好软碟通（UltraISO）
+
+- 打开软件
+
+- 点击打开
+
+- 找到Ubuntu系统所在目录，找到iso文件并打开
+
+- 点击启动，选择写入硬盘镜像
+
+- 大概检查下各个选项（基本是默认格式）
+
+- 点击格式化
+
+- 点击写入
+
+- 刻录完成
+
+4. 从USB启动选择空闲空间安装Ubuntu即可
+
+注：Ubuntu安装方法多种多样，这里就不赘述了。
+
+ 
+
+二、安装CUDA以及Kaldi之前的基本配置
+
+输入：
+
+sudo apt-get update
+
+sudo apt-get install libtool
+
+sudo apt-get install autoconf
+
+sudo apt-get install wget
+
+sudo apt-get install perl
+
+sudo apt-get install subversion
+
+sudo apt-get install build-essential
+
+sudo apt-get install gfortran
+
+sudo apt-get install libatlas-dev
+
+sudo apt-get install libatlas-base-dev
+
+sudo apt-get install zlib1g-dev (中间的是数字 1)
+
+sudo apt-get install gawk
+
+ 
+
+三、安装CUDA
+
+1. 下载cuda_7.5.18_linux.run驱动
+
+- 放在主文件夹下
+
+2. 安装CUDA依赖库
+
+- 安装软件：
+
+输入：sudo apt-get install ppa-purge
+
+- 增加安装源：
+
+输入：sudo apt-add-repository ppa:xorg-edgers
+
+- 更新安装源：
+
+输入：sudo apt-get update
+
+输入：
+
+sudo apt-get install freeglut3-dev
+
+sudo apt-get install build-essential
+
+sudo apt-get install libx11-dev
+
+sudo apt-get install libxmu-dev
+
+sudo apt-get install libxi-dev
+
+sudo apt-get install libgl1-mesa-glx
+
+sudo apt-get install libglu1-mesa
+
+sudo apt-get install libglu1-mesa-dev
+
+3. 删除已有的nvidia：
+
+输入：
+
+sudo apt-get remove --purge nvidia*
+
+4. 编辑黑名单
+
+输入：
+
+sudo nano /etc/modprobe.d/blacklist.conf
+
+- 在终端的末尾添加：
+
+blacklist amd76x_edac
+
+注：这个本身就有，就在这后面添加后面以下五行，注意不要拼错
+
+blacklist vga16fb
+
+blacklist nouveau
+
+blacklist rivafb
+
+blacklist nvidiafb
+
+blacklist rivatv
+
+5. 关闭图形化界面并安装CUDA
+
+- 操作：Ctrl+Alt+F1
+
+输入：账号和密码
+
+输入：
+
+sudo service lightdm stop
+
+chmod +x cuda_7.5.18_linux.run
+
+sudo ./ cuda_7.5.18_linux.run
+
+注：之后一直长按回车键，直到百分比进度条到100%，之后全部选择（y）es，然后一路回车就可以了。等待CUDA安装完成之后，屏幕最后会显示：
+
+
+
+
+6. 设置环境变量
+
+输入：
+
+sudo nano /etc/profile
+
+- 在文件的最后一行添加 PATH="$PATH:/usr/local/cuda-7.5/bin"
+
+- 然后保存并退出
+
+输入：
+
+source /etc/profile
+
+输入：
+
+echo $PATH
+
+输入：
+
+sudo nano /etc/ld.so.conf
+
+- 在第二行写入 include /usr/local/cuda-7.5/lib64
+
+注：如果是第一次装机，先要设置一下root 密码
+
+输入：
+
+sudo passwd root
+
+root 密码设置好之后，输入 su 进入 root 账号
+
+输入：ldconfig
+
+输入：exit
+
+输入：sudo service lightdmstart
+
+ 
+
+高大上简洁版：
+
+见我博客：http://blog.csdn.net/jojozhangju/article/details/51485931
+
+
+
+四、安装Kaldi
+
+第一步：下载Kaldi源代码
+
+现在Kaldi的最新网址是：http://www.kaldi-asr.org/
+
+同时，下载地址是：https://github.com/kaldi-asr/kaldi
+
+下载后，提取并放在主文件夹下即可。
+
+注：推荐使用Ubuntu直接在浏览器下载，最好不要用Windows下载完之后用U盘拷贝过去，我当时就是这样做的，结果有些权限问题比较麻烦。
+
+第二步：准备阶段
+
+编译Kaldi之前需要完成：
+
+1. 修改gcc以及g++版本
+
+注：Ubuntu14.04默认安装的gcc/g++版本是4.8，编译Kaldi所需的版本要在4.8以下，所以需要要把gcc/g++版本降成4.6
+
+1.1 首先查看安装的版本：
+
+输入：
+
+ls /usr/bin/gcc*
+
+如果没有版本4.6，则需要安装：
+
+输入：
+
+sudo apt-get install gcc-4.6
+
+sudo apt-get install gcc-4.6-multilib
+
+sudo apt-get install g++-4.6
+
+sudo apt-get install g++-4.6-multilib
+
+1.2 安装之后选择当前版本
+
+修改gcc
+
+输入：
+
+sudo update-alternatives --install/usr/bin/gcc gcc /usr/bin/gcc-4.8 50
+
+sudo update-alternatives --install/usr/bin/gcc gcc /usr/bin/gcc-4.6 40
+
+之后输入：
+
+sudo update-alternatives --config gcc
+
+之后手动选择所需gcc版本编号，输入1，即选择当前gcc版本为4.6，之后回车
+
+修改g++
+
+输入：
+
+sudo update-alternatives --install/usr/bin/g++ g++ /usr/bin/g++-4.8 50
+
+sudo update-alternatives --install/usr/bin/g++ g++ /usr/bin/g++-4.6 40
+
+之后输入：
+
+sudo update-alternatives --config g++
+
+之后需要手动选择g++版本编号，输入1，即选择当前g++版本为4.6，之后回车
+
+1.3 修改后查看当前版本
+
+输入：
+
+gcc –version
+
+g++ --version
+
+查看当前版本
+
+
+
+2. 修改默认 shell
+
+输入：sudoln -s -f bash /bin/sh
+
+3. 安装 git
+
+输入：sudoapt-get install git
+
+第三步：编译Kaldi
+
+输入：
+
+cd ./kaldi-master/tools
+
+make –j 4
+
+注：如果中途没有退出的话就基本没问题了。需要注意的是安装过程中全程保持网络畅通。如果实在看下载进度条没速度，就自己下载好相应的包，放在应该存放的目录下即可。
+
+输入：
+
+cd ../src
+
+./configure
+
+注：检查OpenFST和ATLAS两个外部库是否安装成功，并且检查CUDA是否安装成功。没问题的话应该有如下显示：
+ 
+
+
+输入：
+
+make depend –j 4
+
+make –j 4
+
+注：如果有8个cpu可以将4替换成8，这部分时间会比较长。
+
+第四步：单独编译cudamatrix
+
+输入：
+
+cd kaldi-maser/src/cudamatrix/
+
+sudo nano Makefile
+
+- 把文件中的TESTFILES改成BINFILES
+
+输入：
+
+cd ~/kaldi-master/src/cudamatrix
+
+make all
+
+./cu-vector-test
+
+如果不报错并显示如下信息，则说明CUDA进行矩阵运算了。
+
+
+
+自此，Kaldi就安装成功了。
+
+五、集群工作环境
+
+如果是集群的话，一切就简单多了。
+
+先配置好Kaldi需要的依赖环境之后就可以直接开始下载并安装Kaldi了。
+
+第一步：git clone https://github.com/kaldi-asr/kaldi.git
+
+第二步：查看INSTALL文件有相应的指导
+
+This is the official Kaldi INSTALL. Look also at INSTALL.md for the git mirror installation.
+[for native Windows install, see windows/INSTALL]
+
+(1)
+go to tools/  and follow INSTALL instructions there.
+
+(2) 
+go to src/ and follow INSTALL instructions there.
+然后分别查看tools文件夹和src文件夹下指导文件，并执行：
+cd ./tools
+
+make -j 4
+
+
+
+cd ../src
+
+./configure --shared
+
+make depend -j 8
+
+make -j 8
+
+
+等待一会儿也就搞定了。
+
+然后切换到yesno例子下面，跑下例子，等下出现下面结果就表示kaldi装好了。
+
+cd ./yesno/s5/
+
+./run.sh
+
+
+————————————————
+版权声明：本文为CSDN博主「JamesJuZhang」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/jojozhangju/article/details/51326798
