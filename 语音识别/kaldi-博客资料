@@ -1,0 +1,76 @@
+https://blog.csdn.net/xwei1226/article/category/7625520
+
+kaldi 关注
+关注数：0 文章数：18 访问量：21479
+转载
+对于ASR流程的理解
+训练声学模型(ＡＭ)的概念在钻研脚本之前,理解训练声学模型的基本过程很重要。考虑听众和本教程的目的，这部分主要关注处理的流程而不是计算。处理的流程分解如下:1)获得语音数据的文本标注为了更准确地对齐，一句话(句子)的开始和结束时间有用但是不必要。术语解释：utterance(句子)à在口语分析中，句子是最小的单位，它是一个以明确的停顿开始和结束的连续讲话。 2)格式化标注为Kaldi需要的格式在声...
+2018-05-02 09:27:03 阅读数 2245 评论数 0
+原创
+kaldi语音特征预处理-mfcc特征与标签对齐（一）
+  学习kaldi已经接近两个月了，终于将kaldi中语音的特征数据提取出来，对于其分帧的标签进行对齐，即将输入到TensorFlow搭建的模型中，下面详细的讲解一下如何提取语音的特征以及对音素标签进行对齐，提取语音MFCC+delta+deltas的39维度特征在上将博客已经讲完，可以翻看前面博客，下面着重讲一下如何提取语音的的对齐特征。  以thchs30语料进行试验，对mono模型的对齐特征...
+2018-05-30 23:06:55 阅读数 2566 评论数 17
+转载
+kaldi中特征变换
+简介Kaldi 目前支持多种特征和模型空间的变换与映射。特征空间变换和映射通过工具来处理（本质上就是矩阵），以下章节将介绍：全局线性或仿射变换说话人无关或单一说话人（per-speaker）或者（per-utterance）单一句子自适应句子-说话人（Utterance-to-speaker）和说话人-句子（speaker-to-utterance）映射组合变换估计变换时的静音权重变换，投影或者其...
+2018-06-06 14:00:32 阅读数 576 评论数 0
+转载
+kaldi-train_mono.sh详解
+kaldi中训练声学模型，首先是训练单音素模型，即mono-phone过程，本文主要讲述mono-phone训练的过程。代码为steps/train_mono.sh用法如下所示：steps/train_mono.sh [options] &amp;lt;training-data-dir&amp;gt; &amp;lt;lang-dir&amp;gt; &amp;lt;exp-dir&amp;gt;training-data-dir表示事先准备...
+2018-05-29 09:06:57 阅读数 727 评论数 0
+原创
+mfcc特征提取-39维度（基于kaldi）
+  经过请教师兄，用了三天的时间，终于把kaldi中thchs30语料的mfcc特征提取出来，上次博客提取的是13维度，这次我们利用kaldi中add-deltas函数成功的将提取出ark二进制文件，以及txt格式的文件，准备与python进行对接。  下面讲一下如何将kaldi中的13维度的特征转换成30维度的，首先进入/kaldi/src/featbins/,如下图所示：...
+2018-05-28 20:57:35 阅读数 2802 评论数 1
+原创
+将kaldi中语音特征提取出来，并转化为txt格式
+本文讲解的是如何将kaldi中的特征数据读取出来，将ark二进制文件转化成.txt格式的文件1：首先进入root下；2：cd /home/zhangwei/kaldi/src/featbin/  ;3：./copy-feats --binary=false ark:（二进制文件位置） ark,t: （你需要存放文件的位置）；4：最后注明一下，如果在copy-feats有问题，可以使用./copy-...
+2018-05-15 20:44:58 阅读数 877 评论数 0
+转载
+kadli and tensorflow
+2 Kaldi中的工具特征提取1.创建 lable_to_wav.scp0 0.wav#格式为：[标签 /path/to/0.wav]2.提取特征compute-mfcc-feats --use-energy=false --sample-frequency=8000 scp:lable_to_wav.scp ark:myfeats.ark # ‘scp:’，‘ark:’分别用来告诉kaldi输...
+2018-05-15 19:36:48 阅读数 287 评论数 0
+原创
+thchs30运行流程以及在线、离线识别
+（1）thchs30运行过程以及bug修复按照网上教程，训练thchs30首先需要将run脚本中的变量定位到你存储数据的位置，其次是修改cmd脚本中的queue为run.pl。但是不知道是我的主机原因还是系统的原因，总是不行，后来博主一步一步运行了脚本，发现对于ubuntu16和ubuntu14是有很大的差别的。  首先，Ubuntu16是14的进化版，但是博主还是建议各位大佬装14，因为16不稳...
+2018-05-08 16:34:46 阅读数 1267 评论数 0
+转载
+thchs30跑过程中注意事项
+尽量使用最新的版本，之需要改下面的第一个问题，就可以全部跑通，新的版本中beam size 是6， 就不会有问题了。按照github上的版本直接跑的过程中遇到两个问题： 1. 在 make word graph的过程中字典正确的没有拷贝到本地： 在 14.04 下面没有问题，在16.04 下面出现问题了。 cat $thchs/resource/dict/lexicon.txt $thchs/d...
+2018-05-08 14:25:26 阅读数 386 评论数 0
+转载
+kaldi 在线识别中bug修复
+【问题描述】使用kaldi工具包进行在线语音识别，识别麦克风输入，输出识别结果。使用egs/voxforge/online_demo文件夹时，./run.sh --test-mode live输出portaudio failed to open the defalut stream【解决办法】分三步进行解决。1.首先检查linux系统录音功能是否可用：arecord命令，如arecord -d 1...
+2018-05-08 14:09:31 阅读数 219 评论数 0
+原创
+关于kaldi中yesno脚本的详细分析，以及脚本的理解
+  本人经过一番寒彻骨，学习shell、linux、kaldi，终于将kaldi中最简单的样例理解，由于过于口语话，文中可能出现措辞不当，忘谅解。  首先我们打开kaldi中yesno例子，打开脚本run.sh，第一行是脚本解释器，，我们采用bash这个脚本解释器；  然后是train_cmd,decode_cmd两个变量，进行本地运行。对于接下来的if条件语句，如果你已经下载了yesno的语料，...
+2018-04-27 15:26:00 阅读数 1295 评论数 0
+原创
+01-kaldi安装
+  由于kaldi最新官网已经搬到了github上，故原来一些大佬的博客里面写的关于kaldi安装已经不能使用了，本人经过努力，终于安装好了kaldi，下面是kaldi安装的详细教程。  1：首先访问kaldi-github， git clone http://github.com/kaldi-asr/kaldi.git kaldi --origin upstream;  2：然后cd kaldi...
+2018-04-27 14:48:11 阅读数 317 评论数 0
+转载
+thchs30 - online
+最近研究了下kaldi，也看了好多文章，感觉这方面的有用文章太少！ 大多停留在编译和深层理论方面。对于我们这种没有基础的人，除了看完编译，就只能很茫然的看哪些高高在上的理论了。本文章，适合那些。刚刚编辑完kaldi。想试试手，找找感觉的人来看的。如果你还没有编辑过，可以查查相关文章。有好多。声明一下，本文章，只适合在windows下装虚拟机UBuntu的机器上玩。你的虚拟机内存要大些（4g--8g...
+2018-05-04 11:03:55 阅读数 303 评论数 0
+转载
+thchs30流程
+第一阶段:./cmd.sh . ./path.sh(设置执行路径以及命令脚本名字)ps:decode 解码 train 训练第二阶段:data preparation(数据准备阶段)执行 local/ thchs-30_data_prep.sh为了创建: wav.scp, utt2spk.scp, spk2utt.scp, text 还有words.txt phone.txt- 循环遍历thchs...
+2018-05-04 08:47:56 阅读数 1137 评论数 0
+转载
+kaldi如何学习
+参考文献：  链接：https://www.zhihu.com/question/65516424/answer/265297686  著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。我目前使用kaldi分成两块: hmm-gmm和神经网络。学习kaldi的话，先从hmm-gmm入手比较好，像steps/train_delta.sh, steps/train_fmllr.sh,...
+2018-05-04 08:23:17 阅读数 1426 评论数 0
+转载
+语音识别-TDNN
+近来在了解卷积神经网络（CNN），后来查到CNN是受语音信号处理中时延神经网络（TDNN）影响而发明的。本篇的大部分内容都来自关于TDNN原始文献【1】的理解和整理。该文写与1989年，在识别&quot;B&quot;, &quot;D&quot;, &quot;G&quot;三个浊音中得到98.5%的准确率，高于HMM的93.7%。是CNN的先驱。普通神经网络识别音素在讲TDNN之前先说说一般的神经网络的是怎样识别音素的吧。假设要识别三个辅音&quot;B&quot;, &quot;...
+2018-05-03 16:09:21 阅读数 3687 评论数 0
+原创
+kaldi中运行thchs30流程，文件配置详解
+  本人是kaldi新手，前些阶段运行了kaldi中中文最难的样例aishell，终于跑成功了，修改了好多路径、请教了好多大神，在此感谢，如果有想了解详细的运行过程可以和鄙人交流。  由于要做在线识别，网上大多数都是关于thchs30的在线识别，aishell缺少在线识别的教程，没办法，本人是小白，只能跟着大佬做，目前进行到训练脚本的部分。下面谈一下训练thchs30这个例子的过程，可能大多数人在...
+2018-05-02 21:46:47 阅读数 1134 评论数 0
+转载
+kaldi 中文件读取
+* 1.ark,scp文件 ~/kaldi/src/featbin/copy-featsark:raw_mfcc_dev.10.arkark,t:-|head ark存的试二进制文件，scp可以直接用cat命令看。 *2.fst文件 ~/kaldi/tools/openfst-1.6.2/bin/fstprintL.fst|head-n10 ~/kaldi/t...
+2019-04-23 18:16:16 阅读数 228 评论数 0
