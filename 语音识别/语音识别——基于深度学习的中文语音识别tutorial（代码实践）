@@ -1,0 +1,456 @@
+https://blog.csdn.net/chinatelecom08/article/details/85013535#3__533
+
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/chinatelecom08/article/details/85013535
+文章目录
+利用thchs30为例建立一个语音识别系统
+1. 特征提取
+2. 数据处理
+下载数据
+2.1 生成音频文件和标签文件列表
+定义函数`source_get`，获取音频文件及标注文件列表
+确认相同id对应的音频文件和标签文件相同
+2.2 label数据处理
+定义函数`read_label`读取音频文件对应的拼音label
+为label建立拼音到id的映射，即词典
+有了词典就能将读取到的label映射到对应的id
+总结:
+2.3 音频数据处理
+由于声学模型网络结构原因（3个maxpooling层），我们的音频数据的每个维度需要能够被8整除。
+总结：
+2.4 数据生成器
+确定batch_size和batch_num
+shuffle
+generator
+padding
+3. 模型搭建
+3.1 构建模型组件
+3.2 搭建cnn+dnn+ctc的声学模型
+4. 模型训练及推断
+4.1 模型训练
+4.2 模型推断
+利用thchs30为例建立一个语音识别系统
+数据处理
+搭建模型
+DFCNN
+论文地址：http://xueshu.baidu.com/usercenter/paper/show?paperid=be5348048dd263aced0f2bdc75a535e8&site=xueshu_se
+代码地址：https://github.com/audier/my_ch_speech_recognition/tree/master/tutorial
+
+语言模型代码实践tutorial也有啦：
+
+基于CBHG结构:https://blog.csdn.net/chinatelecom08/article/details/85048019
+基于自注意力机制:https://blog.csdn.net/chinatelecom08/article/details/85051817
+
+1. 特征提取
+input为输入音频数据，需要转化为频谱图数据，然后通过cnn处理图片的能力进行识别。
+
+1. 读取音频文件
+
+import scipy.io.wavfile as wav
+import matplotlib.pyplot as plt
+import os
+
+# 随意搞个音频做实验
+filepath = 'test.wav'
+
+fs, wavsignal = wav.read(filepath)
+
+plt.plot(wavsignal)
+plt.show()
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+
+
+2. 构造汉明窗
+
+import numpy as np
+
+x=np.linspace(0, 400 - 1, 400, dtype = np.int64)
+w = 0.54 - 0.46 * np.cos(2 * np.pi * (x) / (400 - 1))
+plt.plot(w)
+plt.show()
+1
+2
+3
+4
+5
+6
+
+
+3. 对数据分帧
+
+帧长： 25ms
+帧移： 10ms
+采样点（s） = fs
+采样点（ms）= fs / 1000
+采样点（帧）= fs / 1000 * 帧长
+1
+2
+3
+time_window = 25
+window_length = fs // 1000 * time_window
+1
+2
+4. 分帧加窗
+
+# 分帧
+p_begin = 0
+p_end = p_begin + window_length
+frame = wavsignal[p_begin:p_end]
+plt.plot(frame)
+plt.show()
+# 加窗
+frame = frame * w
+plt.plot(frame)
+plt.show()
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+
+
+
+
+5. 傅里叶变换
+
+所谓时频图就是将时域信息转换到频域上去，具体原理可百度。人耳感知声音是通过
+
+from scipy.fftpack import fft
+
+# 进行快速傅里叶变换
+frame_fft = np.abs(fft(frame))[:200]
+plt.plot(frame_fft)
+plt.show()
+
+# 取对数，求db
+frame_log = np.log(frame_fft)
+plt.plot(frame_log)
+plt.show()
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+
+
+
+
+分帧
+加窗
+傅里叶变换
+import numpy as np
+import scipy.io.wavfile as wav
+from scipy.fftpack import fft
+
+
+# 获取信号的时频图
+def compute_fbank(file):
+	x=np.linspace(0, 400 - 1, 400, dtype = np.int64)
+	w = 0.54 - 0.46 * np.cos(2 * np.pi * (x) / (400 - 1) ) # 汉明窗
+	fs, wavsignal = wav.read(file)
+	# wav波形 加时间窗以及时移10ms
+	time_window = 25 # 单位ms
+	window_length = fs / 1000 * time_window # 计算窗长度的公式，目前全部为400固定值
+	wav_arr = np.array(wavsignal)
+	wav_length = len(wavsignal)
+	range0_end = int(len(wavsignal)/fs*1000 - time_window) // 10 # 计算循环终止的位置，也就是最终生成的窗数
+	data_input = np.zeros((range0_end, 200), dtype = np.float) # 用于存放最终的频率特征数据
+	data_line = np.zeros((1, 400), dtype = np.float)
+	for i in range(0, range0_end):
+		p_start = i * 160
+		p_end = p_start + 400
+		data_line = wav_arr[p_start:p_end]	
+		data_line = data_line * w # 加窗
+		data_line = np.abs(fft(data_line))
+		data_input[i]=data_line[0:200] # 设置为400除以2的值（即200）是取一半数据，因为是对称的
+	data_input = np.log(data_input + 1)
+	#data_input = data_input[::]
+	return data_input
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+该函数提取音频文件的时频图
+import matplotlib.pyplot as plt
+filepath = 'test.wav'
+
+a = compute_fbank(filepath)
+plt.imshow(a.T, origin = 'lower')
+plt.show()
+1
+2
+3
+4
+5
+6
+
+
+2. 数据处理
+下载数据
+thchs30: http://www.openslr.org/18/
+
+2.1 生成音频文件和标签文件列表
+考虑神经网络训练过程中接收的输入输出。首先需要batch_size内数据需要统一数据的shape。
+
+格式为：[batch_size, time_step, feature_dim]
+
+然而读取的每一个sample的时间轴长都不一样，所以需要对时间轴进行处理，选择batch内最长的那个时间为基准，进行padding。这样一个batch内的数据都相同，就能进行并行训练啦。
+
+source_file = 'data_thchs30'
+1
+定义函数source_get，获取音频文件及标注文件列表
+形如：
+
+E:\Data\thchs30\data_thchs30\data\A11_0.wav.trn
+E:\Data\thchs30\data_thchs30\data\A11_1.wav.trn
+E:\Data\thchs30\data_thchs30\data\A11_10.wav.trn
+E:\Data\thchs30\data_thchs30\data\A11_100.wav.trn
+E:\Data\thchs30\data_thchs30\data\A11_102.wav.trn
+E:\Data\thchs30\data_thchs30\data\A11_103.wav.trn
+E:\Data\thchs30\data_thchs30\data\A11_104.wav.trn
+E:\Data\thchs30\data_thchs30\data\A11_105.wav.trn
+E:\Data\thchs30\data_thchs30\data\A11_106.wav.trn
+E:\Data\thchs30\data_thchs30\data\A11_107.wav.trn
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+def source_get(source_file):
+    train_file = source_file + '/data'
+    label_lst = []
+    wav_lst = []
+    for root, dirs, files in os.walk(train_file):
+        for file in files:
+            if file.endswith('.wav') or file.endswith('.WAV'):
+                wav_file = os.sep.join([root, file])
+                label_file = wav_file + '.trn'
+                wav_lst.append(wav_file)
+                label_lst.append(label_file)
+            
+    return label_lst, wav_lst
+
+label_lst, wav_lst = source_get(source_file)
+
+print(label_lst[:10])
+print(wav_lst[:10])
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+['data_thchs30/data/A23_73.wav.trn', 'data_thchs30/data/C4_681.wav.trn', 'data_thchs30/data/D12_793.wav.trn', 'data_thchs30/data/A19_137.wav.trn', 'data_thchs30/data/D11_898.wav.trn', 'data_thchs30/data/B33_491.wav.trn', 'data_thchs30/data/C7_546.wav.trn', 'data_thchs30/data/C32_671.wav.trn', 'data_thchs30/data/D32_817.wav.trn', 'data_thchs30/data/A32_115.wav.trn']
+['data_thchs30/data/A23_73.wav', 'data_thchs30/data/C4_681.wav', 'data_thchs30/data/D12_793.wav', 'data_thchs30/data/A19_137.wav', 'data_thchs30/data/D11_898.wav', 'data_thchs30/data/B33_491.wav', 'data_thchs30/data/C7_546.wav', 'data_thchs30/data/C32_671.wav', 'data_thchs30/data/D32_817.wav', 'data_thchs30/data/A32_115.wav']
+1
+2
+确认相同id对应的音频文件和标签文件相同
+for i in range(10000):
+    wavname = (wav_lst[i].split('/')[-1]).split('.')[0]
+    labelname = (label_lst[i].split('/')[-1]).split('.')[0]
+    if wavname != labelname:
+        print('error')
+1
+2
+3
+4
+5
+2.2 label数据处理
+定义函数read_label读取音频文件对应的拼音label
+def read_label(label_file):
+    with open(label_file, 'r', encoding='utf8') as f:
+        data = f.readlines()
+        return data[1]
+
+print(read_label(label_lst[0]))
+
+def gen_label_data(label_lst):
+    label_data = []
+    for label_file in label_lst:
+        pny = read_label(label_file)
+        label_data.append(pny.strip('\n'))
+    return label_data
+
+label_data = gen_label_data(label_lst)
+print(len(label_data))
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+zhe4 ci4 quan2 guo2 qing1 nian2 pai2 qiu2 lian2 sai4 gong4 she4 tian1 jin1 zhou1 shan1 wu3 han4 san1 ge5 sai4 qu1 mei3 ge5 sai4 qu1 de5 qian2 liang3 ming2 jiang4 can1 jia1 fu4 sai4
+
+13388
+1
+2
+3
+为label建立拼音到id的映射，即词典
+def mk_vocab(label_data):
+    vocab = []
+    for line in label_data:
+        line = line.split(' ')
+        for pny in line:
+            if pny not in vocab:
+                vocab.append(pny)
+    vocab.append('_')
+    return vocab
+
+vocab = mk_vocab(label_data)
+print(len(vocab))
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+1209
+1
+有了词典就能将读取到的label映射到对应的id
+def word2id(line, vocab):
+    return [vocab.index(pny) for pny in line.split(' ')]
+
+label_id = word2id(label_data[0], vocab)
+print(label_data[0])
+print(label_id)
+1
+2
+3
+4
+5
+6
+zhe4 ci4 quan2 guo2 qing1 nian2 pai2 qiu2 lian2 sai4 gong4 she4 tian1 jin1 zhou1 shan1 wu3 han4 san1 ge5 sai4 qu1 mei3 ge5 sai4 qu1 de5 qian2 liang3 ming2 jiang4 can1 jia1 fu4 sai4
+[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 9, 20, 21, 19, 9, 20, 22, 23, 24, 25, 26, 27, 28, 29, 9]
+1
+2
+总结:
+我们提取出了每个音频文件对应的拼音标签label_data，通过索引就可以获得该索引的标签。
+
+也生成了对应的拼音词典.由此词典，我们可以映射拼音标签为id序列。
+
+输出：
+
+vocab
+label_data
+print(vocab[:15])
+print(label_data[10])
+print(word2id(label_data[10], vocab))
+1
+2
+3
+['zhe4', 'ci4', 'quan2', 'guo2', 'qing1', 'nian2', 'pai2', 'qiu2', 'lian2', 'sai4', 'gong4', 'she4', 'tian1', 'jin1', 'zhou1']
+can1 jin1 shi4 ca1 zui3 he2 shou2 zhi3 de5 bei1 bian1 qing3 yong4 can1 zhi3 ca1 shi4 lian3 shang4 de5 han4 huo4 zhan1 shang5 de5 shui3 zhi1 qing3 yong4 zi4 ji3 de5 shou3 juan4 ca1 diao4
+[27, 13, 199, 200, 201, 63, 202, 203, 22, 204, 205, 206, 207, 27, 203, 200, 199, 208, 120, 22, 17, 209, 210, 211, 22, 31, 212, 206, 207, 213, 214, 22, 215, 216, 200, 217]
+1
+2
+3
+2.3 音频数据处理
+音频数据处理，只需要获得对应的音频文件名，然后提取所需时频图即可。
+
+其中compute_fbank时频转化的函数在前面已经定义好了。
+
+fbank = compute_fbank(wav_lst[0])
+print(fbank.shape)
+1
+2
+(1026, 200)
+1
+plt.imshow(fbank.T, origin = 'lower')
+plt.show()
+1
+2
+
+
+由于声学模型网络结构原因（3个maxpooling层），我们的音频数据的每个维度需要能够被8整除。
+fbank = fbank[:fbank.shape[0]//8*8, :]
+1
+print(fbank.shape)
+1
+(1024, 200)
+1
+总结：
+对音频数据进行时频转换
+转换后的数据需要各个维度能够被8整除
+————————————————
+版权声明：本文为CSDN博主「Audior」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/chinatelecom08/article/details/85013535
