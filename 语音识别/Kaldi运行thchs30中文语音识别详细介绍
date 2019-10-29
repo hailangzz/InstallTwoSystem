@@ -1,0 +1,334 @@
+转载自 https://www.jianshu.com/p/c48466d36162　　这篇文章写的比较详细，适合新手入门观看，特地摘录下来以供分享和之后学习
+
+说明
+测试环境：Ubuntu16.04
+建议：仔细地按照此教程来，有些人中间出错是因为没仔细按照教程的步骤和细节
+文档更新时间：20180713
+使用thchs30训练最后的识别准确率约：64%
+运行thchs30步骤
+安装kaldi：https://github.com/kaldi-asr/kaldi/blob/master/tools/INSTALL，按官方教程即可
+首先进入githab下载的源码中egs目录下找到这个例子，然后要看一遍它的介绍。在readme里面有语料库的下载方式。把它下完（3个压缩包全下）。总共８个多G比较大。
+考到对应的文件夹下（与s5同级别即可），取名叫thchs30-openslr，将所有压缩包解压到这下面，文件目录如下
+thchs30-openslr
+├── data_thchs30
+├── resource
+└── test-noise
+1
+2
+3
+4
+　　4.打开s5目录，编辑cmd.sh. 修改为本地运行， 如下
+
+export train_cmd=run.pl
+export decode_cmd=run.pl
+export mkgraph_cmd=run.pl
+export cuda_cmd=run.pl
+1
+2
+3
+4
+　　修改s5下面的run.sh脚本，可以改两个地方
+
+#n=4      #parallel jobs 修改并行任务的数量，可以根据cpu的个数来定
+n=2      #parallel jobs
+#thchs=/nfs/public/materials/data/thchs30-openslr #修改文件路径，改成你的文件路径
+thchs=/home/jackie/data/thchs30-openslr
+1
+2
+3
+4
+　　5.可以直接运行bash run.sh，前面没有配置错误什么的话应该不会有问题，有问题的话注意看输出，大概跑几小时到十几小时（根据机器而定）。也可以选择建议一行一行地跑这个脚本，这样容易定位错误。如何一行行跑呢？ 使用注释：
+
+:<<BLOCK
+....我是注释内容
+....我是注释内容
+BLOCK
+1
+2
+3
+4
+　　6.按照上面的一句一句的来。它大概有几个过程：数据准备，monophone单音素训练， tri1三因素训练， trib2进行lda_mllt特征变换，trib3进行sat自然语言适应，trib4做quick，后面就是dnn了 
+　　 
+　　7.当运行到dnn时候会报错，因为默认dnn都是用GPU来跑的。它会检查一下，发现只在CPU下，就终止了。这里建议不要跑dnn了。因为我试过，改成CPU之后跑了7，8天，才迭代17，18次。太慢了。而一次训练怎么的也得20多次。还要训练好几回。所以，想跑dnn的话还是找GPU吧。 
+　　 
+　　8.运行结束后看thchs30/s5/exp目录，其中tri1/decode_test_word/scoring_kaldi/best_wer 文件就是程序的错误率约36.15%，tri1/final.mdl即为输出的模型，此外graph_word文件夹下面有words.txt,和HCLG.fst，一个是字典，一个是有限状态机。有这3个文件，就可以来使用你的识别功能了。 
+　　 
+　　9.识别自己的语音（使用wav文件或者麦克风）识别效果并不准，错误率约36%。回到源码的kaldi/src目录下。make ext 编译扩展程序。（在这之前确定你的tools文件夹下的portaudio已经装好）之后，会看到onlinebin文件夹。里面有两个程序，online-wav-gmm-decode-faster 用来回放wav文件来识别的，online-gmm-decode-faster用来从麦克风输入声音来识别的。（这里开个小差：portaudio 装好后，有可能收不到声音，可以装个audio recoder（用apt-get）,之后用它录音试试，测测是否有声音，只要能录音，portaudio就没问题，一般装完就好了，不行就再重启一下。不知道为啥。） 
+　　 
+　　10.我们找一个例子吧：去egs下，打开voxforge，里面有个online_demo，直接考到thchs30下。在online_demo里面建2个文件夹online-data work,在online-data下建两个文件夹audio和models，audio下放你要回放的wav，models建个文件夹tri1，把s5下的exp下的tri1下的final.mdl和35.mdl（final.mdl是快捷方式）考过去。把s5下的exp下的tri1下的graph_word里面的words.txt,和HCLG.fst，考到models的tri1下。这里复制完后目录结构应该是这样的
+
+online_demo
+├── online-data
+│   ├── audio
+│   │   ├── 1.wav
+│   │   ├── 2.wav
+│   │   ├── 3.wav
+│   │   ├── 4.wav
+│   │   ├── 5.wav
+│   │   └── trans.txt
+│   └── models
+│       └── tri1
+│           ├── 35.mdl
+│           ├── final.mdl
+│           ├── HCLG.fst
+│           └── words.txt
+├── README.txt
+├── run.sh
+└── work[这个文件夹运行run.sh成功后才会出现]
+    ├── ali.txt
+    ├── hyp.txt
+    ├── input.scp
+    ├── ref.txt
+    └── trans.txt
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+　　11.打开online_demo的run.sh 
+　　
+
+将下面这段注释掉：（这段是voxforge例子中下载现网的测试语料和识别模型的。我们测试语料自己准备，模型就是tri1了）
+if [ ! -s ${data_file}.tar.bz2 ]; then
+    echo "Downloading test models and data ..."
+    wget -T 10 -t 3 $data_url;
+
+
+    if [ ! -s ${data_file}.tar.bz2 ]; then
+        echo "Download of $data_file has failed!"
+        exit 1
+    fi
+fi
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+然后再找到如下这句，将其路径改成tri1
+ac_model_type=tri2b_mmi
+1
+　　改成：
+
+ac_model_type=tri1
+1
+　　以及：
+
+online-wav-gmm-decode-faster --verbose=1 --rt-min=0.8 --rt-max=0.85\
+            --max-active=4000 --beam=12.0 --acoustic-scale=0.0769 \
+            scp:$decode_dir/input.scp $ac_model/model
+1
+2
+3
+　　改成：(仅修改了最后的model为final.mdl)
+
+online-wav-gmm-decode-faster --verbose=1 --rt-min=0.8 --rt-max=0.85\
+            --max-active=4000 --beam=12.0 --acoustic-scale=0.0769 \
+            scp:$decode_dir/input.scp $ac_model/final.mdl
+1
+2
+3
+　　12.直接./run.sh吧，就是开始回放识别了。里面有提示，./run.sh –test-mode live命令就是从麦克风识别。
+
+　　13.升华部分在这里。我们试完tri1的模型后，一定很想试试tri2或3.但当你操作时，会遇到如下的问题：
+
+ERROR (online-wav-gmm-decode-faster:LogLikelihoods():diag-gmm.cc:533) DiagGmm::ComponentLogLikelihood, dimension mismatch 39vs. 40
+1
+　　怎么解决？ 仔细看看这个源文件，它是dieta的。如果要是ldp还得加matrix参数（拿tri2b举例）。
+
+　　于是修改run.sh成如下这个样子 :（就是把12.mat(在tri2中final.mat是12.mat的快捷方式，所以拷贝final.mat)考过来，引入命令中）
+
+ac_model=${data_file}/models/$ac_model_type
+trans_matrix="$ac_model/12.mat"
+audio=${data_file}/audio
+
+if [ -s $ac_model/matrix ]; then
+    trans_matrix=$ac_model/12.mat
+fi
+1
+2
+3
+4
+5
+6
+7
+　　同时把把s5下的exp下的tri2b下的12.mat考到models的tri2b下。 
+　　 
+　　14.再次修改run.sh成如下这个样子（添加2个参数–left-context=3 –right-context=3）
+
+online-wav-gmm-decode-faster --verbose=1 --rt-min=0.8 --rt-max=0.85 \
+            --max-active=4000 --beam=12.0 --acoustic-scale=0.0769 --left-context=3 --right-context=3\
+            scp:$decode_dir/input.scp $ac_model/final.mdl $ac_model/HCLG.fst \
+            $ac_model/words.txt '1:2:3:4:5' ark,t:$decode_dir/trans.txt \
+            ark,t:$decode_dir/ali.txt $trans_matrix;;
+1
+2
+3
+4
+5
+　　15.运行./run.sh，结果如下。怎么样，有点酷不？ 如果想使用tri2等模型做麦克风在线的，也同理修改就可以了。
+
+online-wav-gmm-decode-faster --verbose=1 --rt-min=0.8 --rt-max=0.85 --max-active=4000 --beam=12.0 --acoustic-scale=0.0769 --left-context=3 --right-context=3 scp:./work/input.scp online-data/models/tri2b/final.mdl online-data/models/tri2b/HCLG.fst online-data/models/tri2b/words.txt 1:2:3:4:5 ark,t:./work/trans.txt ark,t:./work/ali.txt online-data/models/tri2b/12.mat 
+File: D4_750
+苏北 军礼 下跪 将 是 马 湛 杀人 里 杜 唐 据 五 苏 并 案 但 甜美 但 也 分析 抗战
+1
+2
+3
+训练与解码脚本解读
+本节结合官方文档对主要脚本进行解读。
+
+以下流程中的符号解释：->表示下一步，{}表示循环，[]表示括号内每一个都要进行一次，()表示不同分支下可能进行的操作
+
+　　1.train_mono.sh 用来训练单音子隐马尔科夫模型，一共进行40次迭代，每两次迭代进行一次对齐操作
+
+gmm-init-mono->compile-train-graphs->align-equal-compiled->gmm-est->
+{gmm-align-compiled->gmm-acc-stats-ali->gmm-est}40->analyze_alignments.sh
+1
+2
+　　2.train_deltas.sh 用来训练与上下文相关的三音子模型
+
+check_phones_compatible.sh->acc-tree-stats->sum-tree-stats->cluster-phones->compile-questions->
+build-tree->gmm-init-model->gmm-mixup->convert-ali->compile-train-graphs->
+{gmm-align-compiled->gmm-acc-stats-ali->gmm-est}35->analyze_alignments.sh
+1
+2
+3
+　　3.train_lda_mllt.sh 用来进行线性判别分析和最大似然线性转换
+
+check_phones_compatible.sh->split_data.sh->ali-to-post->est-lda->acc-tree-stats->sum-tree-stats->
+cluster-phones->compile-questions->build-tree->gmm-init-model->convert-ali->compile-train-graphs->
+{gmm-align-compiled->gmm-acc-stats-ali->gmm-est}35->analyze_alignments.sh
+1
+2
+3
+　　4.train_sat.sh 用来训练发音人自适应，基于特征空间最大似然线性回归
+
+check_phones_compatible.sh->ali-to-post->acc-tree-stats->sum-tree-stats->cluster-phones->compile-questions->
+build-tree->gmm-init-model->gmm-mixup->convert-ali->compile-train-graphs->
+{gmm-align-compiled->(ali-to-post->)gmm-acc-stats-ali->gmm-est}35->ali-to-post->
+gmm-est->analyze_alignments.sh
+1
+2
+3
+4
+　　5.train_quick.sh 用来在现有特征上训练模型。 
+　　对于当前模型中在树构建之后的每个状态，它基于树统计中的计数的重叠判断的相似性来选择旧模型中最接近的状态。
+
+check_phones_compatible.sh->ali-to-post->est-lda->acc-tree-stats->sum-tree-stats->
+cluster-phones->compile-questions->build-tree->gmm-init-model->convert-ali->compile-train-graphs->
+{gmm-align-compiled->gmm-acc-stats-ali->gmm-est}20->analyze_alignments.sh
+1
+2
+3
+　　6.run_dnn.sh 用来训练DNN，包括xent和MPE
+
+{make_fbank.sh->compute_cmvn_stats.sh}[train,dev,test]->train.sh->{decode.sh}[phone,word]->
+align.sh->make_denlats.sh->train_mpe.sh->{{decode.sh}[phone,word]}3
+1
+2
+　　7.train_mpe.sh 用来训练dnn的序列辨别MEP/sMBR 
+　　这个阶段训练神经网络以联合优化整个句子，这比帧级训练更接近于一般ASR目标。 
+　　sMBR的目的是最大化从参考转录对齐导出的状态标签的期望正确率，而使用网格框架来表示竞争假设。 
+　　训练使用每句迭代的随机梯度下降法。 
+　　首先使用固定的低学习率1e-5（sigmoids）运行3-5轮。 
+　　在第一轮迭代后重新生成词图，我们观察到快速收敛。 
+　　我们支持MMI, BMMI, MPE 和sMBR训练。所有的技术在Switchboard 100h集上是相同的，仅仅在sMBR好一点点。 
+　　在sMBR优化中，我们在计算近似正确率的时候忽略了静音帧。
+
+{nnet-train-mpe-sequential}3->make_priors.sh
+1
+　　8.train_dae.sh 用来实验基于dae的去噪效果
+
+compute_cmvn_stats.sh->{add-noise-mod.py->make_fbank.sh->compute_cmvn_stats.sh}[train,dev,test]->
+train.sh->nnet-concat->{{decode.sh}[phone,word]}[train,dev,test]
+1
+2
+　　9.train.sh 用来训练深度神经网络模型，帧交叉熵训练，该相位训练将帧分类为三音状态的DNN。这是通过小批量　　随机梯度下降完成的。 
+　　默认使用Sigmoid隐藏单元，Softmax输出单元和完全连接的AffineTransform层，学习率是0.008，小批量的大小 
+　　为256。 
+　　我们没有使用动量或正则化（注：最佳学习率和隐藏单元的类型不同，sigmoid的值为0.008,tanh为0.00001。 
+　　通过‘–feature-transform’和‘-dbn’将input——transform和预训练的DBN传入此脚本，只有输出层被随机初始化。 
+　　我们使用提前停止来防止过度拟合，为此我们测量交叉验证集合（即保持集合）上的目标函数， 
+　　因此需要两对特征对齐dir来执行监督训练
+
+feat-to-dim->nnet-initialize->compute-cmvn-stats->nnet-forward->nnet-concat->cmvn-to-nnet->
+feat-to-dim->apply-cmvn->nnet-forward->nnet-initialize->train_scheduler.sh
+1
+2
+　　10.train_scheduler.sh 典型的情况就是，train_scheduler.sh被train.sh调用。 
+　　一开始需要在交叉验证集上运行，主函数需要根据$iter来控制迭代次数和学习率。 
+　　学习率会随着目标函数相对性的提高而变化： 
+　　如果提高大于’start_halving_impr=0.01’，初始化学习率保持常数 
+　　否则学习率在每次迭代中乘以’halving_factor=0.5’来缩小 
+　　最后，如果提高小于’end_halving_impr=0.001’，训练终止。 
+　　 
+　　11.mkgraph.sh 用来建立一个完全的识别网络 
+　　 
+　　12.decode.sh 用来解码并生成词错率结果 
+　　 
+　　13.align_si.sh 对制定的数据进行对齐，作为新模型的输入 
+　　 
+　　14.make_fmllr_feats.sh 用来保存FMLLR特征 
+　　 
+　　15.pretrain_dbn.sh 深度神经网络预训练脚本 
+　　 
+　　16.decode_fmllr.sh 对发音人自适应的模型进行解码操作 
+　　 
+　　17.nnet-train-frmshuff.cc 最普遍使用的神经网络训练工具，执行一次迭代训练。过程： 
+　　–feature-transform 即时特征扩展 
+　　NN输入-目标对的每帧重排 
+　　小批量随机梯度下降（SGD）训练 
+　　支持的每帧目标函数（选项 - 对象函数）： 
+　　Xent：每帧交叉熵 
+　　Mse：每帧均方误差 
+　　 
+　　18.nnet-forward.cc 通过神经网络转发数据，默认使用CPU。选项： 
+　　–apply-log :产生神经网络的对数输出(比如：得到对数后验概率) 
+　　–no-softmax :从模型中去掉soft-max层 
+　　—class-frame-counts：从声学得分中减去计算对数的计数
+
+　　专有缩写中文解释
+
+cmvn：倒谱均值和方差归一化
+fft：快速傅里叶变换
+GMM：高斯混合模型
+MFCC：梅尔倒谱系数
+pcm：脉冲编码调制
+pdf：概率分布函数
+PLP：感知线性预测系数
+SGMM：子空间高斯混合模型
+UBM：通用背景模型
+VTLN：特征级声道长度归一化
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+　　希望可以帮助到初次入门Kaldi的新手，像我这种 0.0
