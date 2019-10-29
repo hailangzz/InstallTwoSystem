@@ -1,0 +1,95 @@
+https://blog.csdn.net/Dreamy_Z/article/details/82983086版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/Dreamy_Z/article/details/82983086
+1.准备thchs30中文数据集
+今天开始做语言模型啦，数据集采用的是清华大学的中文数据集thchs30，下载地址在http://www.openslr.org/18/ ，由于是在服务器做训练，以下步骤均采用shell语句进行。
+
+ 
+
+
+1.1 在服务器上使用shell命令（wget -P 目录 网址）下载thchs30,并保存到指定文件（egs/thchs30/s5/thchs30-openslr）
+wget –p egs/thchs30/s5/thchs30-openslr http://www.openslr.org/resources/18/data_thchs30.tgz
+
+wget –p egs/thchs30/s5/thchs30-openslr http://www.openslr.org/resources/18/test-noise.tgz
+
+wget –p egs/thchs30/s5/thchs30-openslr http://www.openslr.org/resources/18/test-noise.tgz
+
+ 
+
+1.2解压在thchs30-openslr下
+tar  -zxvf data_thchs30.tgz
+
+tar  -zxvf test-noise.tgz
+
+tar  -zxvf test-noise.tgz
+
+2.修改脚本
+2.1修改thchs30/s5文件夹下的cmd.sh:先找到s5 目录下的cmd.sh，右键编辑，将内容更改为：
+export train_cmd=run.pl
+
+export decode_cm="run.pl"
+
+export mkgraph_cmd="run.pl " 
+
+export cuda_cmd="run.pl"
+
+ 
+
+
+
+ 
+
+2.2修改thchs30/s5文件夹下的run.sh: 先找到s5 目录下的cmd.sh，右键编辑，将内容更改为：
+n=2      #parallel jobs（根据cpu的个数来定）
+
+thchs=***********/egs/thchs30/s5/thchs30-openslr （中文数据集的文件路径）
+
+
+
+ 
+
+3.开始语言模型训练
+Shell语句cd到s5，运行run.sh：
+
+cd  ***********/egs/thchs30/s5./
+
+./run.sh
+
+ 
+
+4.总结
+以下主要针对run.sh脚本命令及结果进行解读，这个过程主要是：数据准备，特征提取，monophone单音素训练， tri1三因素训练， trib2进行lda_mllt特征变换，trib3进行sat自然语言适应，trib4做quick，后面就是dnn了。目前我只跑到了monophone单音素训练，因此只讲解到monophone单音素训练，后续过程以后再讲。
+
+4.1数据准备
+
+
+
+
+4.2特征提取
+
+
+
+
+梅尔倒谱系数（Mel-scale Frequency Cepstral Coefficients，简称MFCC），对于语音特征参数MFCC提取过程详解，有一位博主写的很详细，这里就不详述了，链接为：https://my.oschina.net/jamesju/blog/193343    
+
+4.3准备发音词典和训练语言模型
+
+
+ 
+
+4.4训练monophone模型和解码
+ 
+
+train_mono.sh用法和其中的参数设置，训练单音素的基础HMM模型，迭代40次，并按照realign_iters的次数对数据对齐。
+
+
+
+
+
+thchs-30_decode.sh测试单音素模型，实际使用mkgraph.sh建立完全的识别网络，并输出一个有限状态转换器，最后使用decode.sh以语言模型和测试数据为输入计算WER.
+
+
+
+ 
+————————————————
+版权声明：本文为CSDN博主「Dreamy_Z」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/Dreamy_Z/article/details/82983086
