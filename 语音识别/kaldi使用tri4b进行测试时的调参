@@ -1,0 +1,42 @@
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/Allyli0022/article/details/78644690
+测试完tri1的模型后，一定很想试试tri2或3.但当你操作时，会遇到如下的问题：
+
+ERROR (online-wav-gmm-decode-faster:LogLikelihoods():diag-gmm.cc:533) DiagGmm::ComponentLogLikelihood, dimension mismatch 39vs. 40
+
+怎么解决？ 
+
+答案：
+
+1、于是修改run.sh成如下这个样子  :
+
+ac_model_type=tri4b
+
+------------------------------------中间有代码------------
+
+trans_matrix="$ac_model/final.mat"
+
+if [ -s $ac_model/matrix ]; then
+    trans_matrix=$ac_model/12.mat
+fi
+
+2、 再次修改run.sh（添加2个参数--left-context=3 --right-context=3）
+
+online-wav-gmm-decode-faster --verbose=1 --rt-min=0.8 --rt-max=0.85 \
+            --max-active=4000 --beam=12.0 --acoustic-scale=0.0769 --left-context=3 --right-context=3\
+            scp:$decode_dir/input.scp $ac_model/final.mdl $ac_model/HCLG.fst \
+            $ac_model/words.txt '1:2:3:4:5' ark,t:$decode_dir/trans.txt \
+            ark,t:$decode_dir/ali.txt $trans_matrix;;
+
+
+
+3、同时把把s5下的exp下的tri4b下的拷到models的tri4b下。
+
+4、 运行./run.sh
+
+
+
+其他问题请参考：http://blog.csdn.net/allyli0022/article/details/78355687
+————————————————
+版权声明：本文为CSDN博主「AllyLi0022」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/allyli0022/article/details/78644690
