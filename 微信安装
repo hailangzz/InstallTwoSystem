@@ -1,0 +1,55 @@
+https://blog.csdn.net/github_38336924/article/details/83031003
+
+
+版权声明：本文为博主原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接和本声明。
+本文链接：https://blog.csdn.net/github_38336924/article/details/83031003
+文章目录
+1、方案一：`简单粗暴`
+2、方案二：
+3、方案三：
+4、扫码登录
+1、方案一：简单粗暴
+打开UbuntuSoftware搜索electronic-wechat,然后点击install
+
+2、方案二：
+下载最新版本地址：https://github.com/geeeeeeeeek/electronic-wechat/releases
+
+根据系统下载32位或者64位
+
+
+进入linux-x64.tar.gz文件所在目录，执行 tar -zxvf命令解压
+
+tar -zxvf linux-x64.tar.gz
+文件释出之后，运行下面命令：
+./electronic-chat
+或者双击electronic-chat图标
+
+3、方案三：
+要克隆并运行此存储库，您需要在计算机上安装Git和Node.js（随npm一起提供）。从您的命令行：
+＃克隆此存储库
+git clone https://github.com/geeeeeeeeek/electronic-wechat.git
+
+＃进入存储库
+cd electronic-wechat
+
+＃安装依赖项并运行应用程序 
+npm install && npm start
+1
+2
+3
+4
+5
+6
+7
+要打包到应用程序，只需键入以下其中一个：（可能会失败，多执行一次）
+npm run build：linux
+可以在文件夹中发现多了一个dist文件夹，其实dist文件夹里面的内容和直接下载压缩包里面的内容一样
+
+进入dist文件夹，执行如下命令运行启动程序
+./electronic-chat
+4、扫码登录
+
+
+————————————————
+版权声明：本文为CSDN博主「dadeity」的原创文章，遵循 CC 4.0 BY-SA 版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/github_38336924/article/details/83031003
